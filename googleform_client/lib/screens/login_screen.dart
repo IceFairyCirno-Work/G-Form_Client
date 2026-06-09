@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/google_auth_service.dart';
+import '../utils/responsive.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,6 +36,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final spacerHeight = Responsive.getLandscapeAwareSpacer(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -44,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 60),
+                SizedBox(height: spacerHeight),
                 // Google Forms Icon
                 Container(
                   width: 100,
@@ -77,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Color(0xFF5F6368),
                   ),
                 ),
-                const SizedBox(height: 60),
+                SizedBox(height: spacerHeight),
                 // Sign In Button
                 if (_isLoading)
                   const CircularProgressIndicator(
@@ -128,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Color(0xFF80868B),
                   ),
                 ),
-                const SizedBox(height: 60),
+                SizedBox(height: spacerHeight),
               ],
             ),
           ),

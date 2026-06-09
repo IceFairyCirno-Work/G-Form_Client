@@ -1,5 +1,42 @@
 import 'question_model.dart';
 
+/// A collaborator on a form, backed by a Google Drive permission entry.
+class FormEditor {
+  final String permissionId;
+  final String email;
+  final String? displayName;
+  final String? photoUrl;
+  final String role; // 'owner', 'writer', 'reader'
+  final String type; // 'user', 'group', 'anyone'
+
+  const FormEditor({
+    required this.permissionId,
+    required this.email,
+    this.displayName,
+    this.photoUrl,
+    required this.role,
+    required this.type,
+  });
+
+  bool get isOwner => role == 'owner';
+  bool get isWriter => role == 'writer';
+
+  String get displayLabel => displayName?.trim().isNotEmpty == true
+      ? displayName!.trim()
+      : email;
+
+  factory FormEditor.fromDrivePermission(Map<String, dynamic> json) {
+    return FormEditor(
+      permissionId: json['id'] as String? ?? '',
+      email: json['emailAddress'] as String? ?? '',
+      displayName: json['displayName'] as String?,
+      photoUrl: json['photoLink'] as String?,
+      role: json['role'] as String? ?? 'reader',
+      type: json['type'] as String? ?? 'user',
+    );
+  }
+}
+
 class FormModel {
   String formId;
   String title;
@@ -19,6 +56,7 @@ class FormModel {
   bool showProgressBar;
   String confirmationMessage;
   bool shuffleQuestions;
+  List<FormEditor> editors;
 
   FormModel({
     this.formId = '',
@@ -37,7 +75,9 @@ class FormModel {
     this.showProgressBar = false,
     this.confirmationMessage = 'Your response has been recorded.',
     this.shuffleQuestions = false,
-  }) : questions = questions ?? [QuestionItem()];
+    List<FormEditor>? editors,
+  })  : questions = questions ?? [QuestionItem()],
+        editors = editors ?? [];
 
   Map<String, dynamic> toCreateJson() {
     return {

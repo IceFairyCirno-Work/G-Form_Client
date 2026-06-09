@@ -5,6 +5,7 @@ import '../models/form_model.dart';
 import '../models/question_model.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_forms_service.dart';
+import '../utils/responsive.dart';
 import 'form_editor_screen.dart';
 import 'settings_screen.dart';
 
@@ -60,9 +61,6 @@ class _HomeScreenState extends State<HomeScreen>
   String _sortBy = 'modified'; // 'modified', 'opened', 'title'
   String _ownershipFilter = 'anyone'; // 'anyone', 'me', 'not_me'
   late final TabController _tabController;
-
-  static const double _templateCardWidth = 168;
-  static const double _templateCardHeight = 200;
 
   // ── List view layout tuning knobs ──
   // Recent forms header row corners
@@ -622,7 +620,9 @@ class _HomeScreenState extends State<HomeScreen>
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 32),
       ),
-      body: TabBarView(
+      body: SafeArea(
+        top: false,
+        child: TabBarView(
         controller: _tabController,
         children: [
           // Tab 1: My forms
@@ -641,6 +641,7 @@ class _HomeScreenState extends State<HomeScreen>
           // Tab 2: Templates
           _buildTemplatesTab(),
         ],
+      ),
       ),
     );
   }
@@ -963,13 +964,21 @@ class _HomeScreenState extends State<HomeScreen>
 
               // Loading / Empty / Filtered states
               if (_isLoadingForms)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF673AB7),
-                      ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: Responsive.getAdaptiveGridCount(
+                            context,
+                          ),
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => const _SkeletonFormCard(),
+                      childCount: 6,
                     ),
                   ),
                 )
@@ -1038,8 +1047,10 @@ class _HomeScreenState extends State<HomeScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   sliver: SliverGrid(
                     gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: Responsive.getAdaptiveGridCount(
+                            context,
+                          ),
                           childAspectRatio: 0.75,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
@@ -1136,13 +1147,18 @@ class _HomeScreenState extends State<HomeScreen>
 
           // Loading / Empty / Filtered states
           if (_isLoadingForms)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF673AB7),
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: _itemHorizontalPadding),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => Padding(
+                    padding: EdgeInsets.only(
+                      top: index == 0 ? 0 : _itemSpacing / 2,
+                      bottom: _itemSpacing / 2,
+                    ),
+                    child: const _SkeletonFormListCard(),
                   ),
+                  childCount: 10,
                 ),
               ),
             )
@@ -1379,7 +1395,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildTemplateCard(_TemplateData template, {bool fixedSize = false}) {
+  Widget _buildTemplateCard(_TemplateData template) {
     final isComingSoon = template.formId.isEmpty;
 
     final card = Material(
@@ -1480,13 +1496,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
 
-    if (fixedSize) {
-      return SizedBox(
-        width: _templateCardWidth,
-        height: _templateCardHeight,
-        child: card,
-      );
-    }
     return card;
   }
 
@@ -1543,8 +1552,8 @@ class _HomeScreenState extends State<HomeScreen>
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: Responsive.getAdaptiveGridCount(context),
               childAspectRatio: 0.72,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
@@ -1567,8 +1576,8 @@ class _HomeScreenState extends State<HomeScreen>
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: Responsive.getAdaptiveGridCount(context),
           childAspectRatio: 0.72,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
@@ -2192,6 +2201,174 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ShimmerBox extends StatefulWidget {
+  final double? width;
+  final double height;
+  final double radius;
+  final Color color;
+
+  const _ShimmerBox({
+    this.width,
+    this.height = 14,
+    this.radius = 4,
+    this.color = const Color(0xFFE8EAED),
+  });
+
+  @override
+  State<_ShimmerBox> createState() => _ShimmerBoxState();
+}
+
+class _ShimmerBoxState extends State<_ShimmerBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            gradient: LinearGradient(
+              begin: Alignment(-1.0 + 2.0 * _controller.value, 0),
+              end: Alignment(1.0 + 2.0 * _controller.value, 0),
+              colors: [
+                widget.color,
+                widget.color.withValues(alpha: 0.3),
+                widget.color,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SkeletonFormCard extends StatelessWidget {
+  const _SkeletonFormCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Expanded(
+            flex: 3,
+            child: ColoredBox(
+              color: Color(0xFFE8EAED),
+              child: Center(
+                child: Icon(
+                  Icons.description_outlined,
+                  color: Color(0xFFDADCE0),
+                  size: 32,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 10, top: 6, bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        _ShimmerBox(height: 12, width: 80),
+                        SizedBox(height: 6),
+                        _ShimmerBox(height: 10, width: 60, color: Color(0xFFF1F3F4)),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: _ShimmerBox(width: 16, height: 16, radius: 2, color: Color(0xFFF1F3F4)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonFormListCard extends StatelessWidget {
+  const _SkeletonFormListCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const _ShimmerBox(width: 40, height: 40, radius: 8),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                _ShimmerBox(height: 14, width: 160),
+                SizedBox(height: 6),
+                _ShimmerBox(height: 10, width: 90, color: Color(0xFFF1F3F4)),
+              ],
+            ),
+          ),
+          const _ShimmerBox(width: 20, height: 20, radius: 2, color: Color(0xFFF1F3F4)),
+        ],
       ),
     );
   }

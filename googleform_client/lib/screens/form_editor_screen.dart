@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,7 +17,9 @@ import '../models/form_model.dart';
 import '../models/question_model.dart';
 import '../models/response_model.dart';
 import '../services/apps_script_service.dart';
+import '../services/google_auth_service.dart';
 import '../services/google_forms_service.dart';
+import '../utils/responsive.dart';
 
 class FormEditorScreen extends StatefulWidget {
   final String? formId;
@@ -31,6 +34,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     with SingleTickerProviderStateMixin {
   final GoogleFormsService _formsService = GoogleFormsService();
   final AppsScriptService _appsScriptService = AppsScriptService();
+  final GoogleAuthService _authService = GoogleAuthService();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -72,6 +76,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   // Response tab state
   List<FormResponse> _responses = [];
   bool _isLoadingResponses = false;
+  bool _hasLoadedResponses = false;
   int _responseOrderEpoch = 0;
   int _responseSubTab = 0; // 0=Summary, 1=Question, 2=Individual
   final PageController _responseSubTabController = PageController(initialPage: 0);
@@ -79,6 +84,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   int _selectedIndividualIndex = 0;
 
   // Settings state
+  bool _isLoadingSettings = true;
   bool _isPublished = false;
   bool _isPublishing = false;
   bool _isAcceptingResponses = true;
@@ -96,6 +102,19 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   String? _linkedSheetId;
   String? _linkedSheetTitle;
 
+  // Editors state
+  List<FormEditor> _editors = [];
+  FormEditor? _owner;
+  bool _isLoadingEditors = false;
+
+  bool get _isCurrentUserOwner {
+    final currentEmail = _authService.currentUser?.email.toLowerCase();
+    final ownerEmail = _owner?.email.toLowerCase();
+    return currentEmail != null &&
+        ownerEmail != null &&
+        currentEmail == ownerEmail;
+  }
+
   // Mutable form ID — tracks the current form after save operations
   // (unlike widget.formId which is immutable and becomes stale after save)
   String? _currentFormId;
@@ -110,16 +129,22 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     _currentFormId = widget.formId;
     if (_currentFormId != null) {
       _loadExistingForm();
+    } else {
+      // New form — no settings to load
+      _isLoadingSettings = false;
     }
   }
 
   Future<void> _loadExistingForm() async {
     setState(() => _isLoading = true);
-    final form = await _formsService.getForm(_currentFormId!);
+
+    // Single API call: form data + publish settings + shuffle in one request
+    final formData = await _formsService.getFormWithAllData(_currentFormId!);
+    final form = formData['form'] as FormModel?;
     if (!mounted) return;
 
     if (form != null) {
-      _originalForm = form; // Save original form data for diff detection on save
+      _originalForm = form;
       _titleController.text = form.title;
       _descriptionController.text = form.description;
 
@@ -155,6 +180,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         c.dispose();
       }
       _sectionDescriptionControllers.clear();
+
+      // Extract publish settings & shuffle from the same API response
+      final isPublished = formData['isPublished'] as bool? ?? false;
+      final isAcceptingResponses =
+          formData['isAcceptingResponses'] as bool? ?? false;
+      final shuffleQuestions = formData['shuffleQuestions'] as bool?;
 
       setState(() {
         _questions = form.questions;
@@ -199,7 +230,6 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   : null,
             )
             .toList();
-        // Initialize section description controllers from loaded data
         for (int i = 0; i < form.questions.length; i++) {
           final q = form.questions[i];
           if (q.type == QuestionType.section && q.description != null) {
@@ -207,36 +237,54 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           }
         }
         _responderUri = form.responderUri;
-        // Parse email collection type from REST API response
         _emailCollectionType = form.emailCollectionType;
         _collectEmail = _emailCollectionType != 'none';
         _linkedSheetId = form.linkedSheetId;
+        // Apply publish settings from the same API call
+        _isPublished = isPublished;
+        _isAcceptingResponses = isAcceptingResponses;
+        // Apply shuffle from the same API call (may be overridden by Apps Script)
+        if (shuffleQuestions != null) {
+          _shuffleQuestions = shuffleQuestions;
+        }
         _isLoading = false;
       });
 
-      // Load other settings from Apps Script if configured
+      // Run independent API calls in parallel
+      final futures = <Future<void>>[];
+
       if (_appsScriptService.isConfigured && _currentFormId != null) {
-        await _loadFormSettings();
+        futures.add(_loadFormSettings());
       }
 
-      // Load publish settings from REST API
-      if (_currentFormId != null) {
-        await _loadPublishSettings();
-      }
+      futures.add(_loadEditors());
 
-      // Load linked sheet info if available
       if (_linkedSheetId != null) {
-        await _loadLinkedSheetInfo();
+        futures.add(_loadLinkedSheetInfo());
       }
-      if (!mounted) return;
+
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+        if (!mounted) return;
+      }
+
+      // All settings have finished loading
+      if (mounted) {
+        _safeSetState(() => _isLoadingSettings = false);
+      }
     } else {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to load form.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingSettings = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to load form.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -336,6 +384,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   /// The post-frame callback catches cases where a newly built TextField grabs
   /// focus during the rebuild (e.g. after adding a new question).
   void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
     FocusScope.of(context).unfocus();
     setState(fn);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -596,7 +645,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 const SizedBox(height: 16),
                 // Question type blocks
                 GridView.count(
-                  crossAxisCount: 3,
+                  crossAxisCount: Responsive.getQuestionTypeGridCount(ctx),
                   shrinkWrap: true,
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
@@ -1618,6 +1667,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         )
         .length;
     if (validCount == 0) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please add at least one question before saving.'),
@@ -1635,6 +1685,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       final nonEmpty = q.options.where((o) => o.trim().isNotEmpty).toList();
       final unique = nonEmpty.toSet();
       if (unique.length < nonEmpty.length) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -1712,6 +1763,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   /// Show the non-dismissible saving overlay.
   void _showSavingOverlay() {
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2124,9 +2176,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF673AB7)),
-            )
+          ? _buildEditTabSkeleton()
           : TabBarView(
               controller: _tabController,
               physics: const NeverScrollableScrollPhysics(),
@@ -3980,6 +4030,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         }
         _responses = responses;
         _isLoadingResponses = false;
+        _hasLoadedResponses = true;
         // Clamp selection indices so they stay within bounds
         if (_selectedIndividualIndex >= _responses.length) {
           _selectedIndividualIndex =
@@ -4056,6 +4107,17 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       );
     }
 
+    // Show skeleton until responses have been loaded at least once.
+    // This prevents flashing "No responses yet" before the API call starts.
+    if (!_hasLoadedResponses) {
+      return Column(
+        children: [
+          _buildExportButtonBar(),
+          Expanded(child: _buildResponseLoadingSkeleton()),
+        ],
+      );
+    }
+
     // PageView for clean horizontal swipe between sub-tabs
     // When no responses, all three pages show the same empty state
     // Use different keys to force full rebuild when transitioning between
@@ -4096,15 +4158,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         Expanded(
           child: Stack(
             children: [
-              pageView,
-              _buildRefreshFAB(),
               if (_isLoadingResponses)
-                Container(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  child: const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF673AB7)),
-                  ),
-                ),
+                _buildResponseLoadingSkeleton()
+              else
+                pageView,
+              _buildRefreshFAB(),
             ],
           ),
         ),
@@ -5355,69 +5413,74 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       const Color(0xFF26A69A),
       const Color(0xFFEF5350),
     ];
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Pie
-        SizedBox(
-          width: 140,
-          height: 140,
-          child: CustomPaint(
-            painter: _PieChartPainter(
-              options: options,
-              counts: counts,
-              colors: pieColors,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Legend
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(options.length, (i) {
-              final count = counts[options[i]] ?? 0;
-              final pct = total > 0
-                  ? (count / total * 100).toStringAsFixed(0)
-                  : '0';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: pieColors[i % pieColors.length],
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        options[i],
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF202124),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$count ($pct%)',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF5F6368),
-                      ),
-                    ),
-                  ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pieSize = Responsive.getPieChartSize(constraints.maxWidth);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Pie
+            SizedBox(
+              width: pieSize,
+              height: pieSize,
+              child: CustomPaint(
+                painter: _PieChartPainter(
+                  options: options,
+                  counts: counts,
+                  colors: pieColors,
                 ),
-              );
-            }),
-          ),
-        ),
-      ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Legend
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: List.generate(options.length, (i) {
+                  final count = counts[options[i]] ?? 0;
+                  final pct = total > 0
+                      ? (count / total * 100).toStringAsFixed(0)
+                      : '0';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: pieColors[i % pieColors.length],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            options[i],
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF202124),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$count ($pct%)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF5F6368),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -6560,51 +6623,26 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         debugPrint('confirmationMessage: ${settings['confirmationMessage']}');
         debugPrint('sendResponseCopy: ${settings['sendResponseCopy']}');
 
-        // Read shuffleQuestions from Apps Script result
+        // Read shuffleQuestions from Apps Script result (highest priority).
+        // REST API shuffle was already loaded via getFormWithAllData().
         final appsScriptShuffle = settings['shuffleQuestions'] as bool?;
-
-        // Fallback: try reading shuffleQuestions from the REST API raw settings.
-        // The REST API may include it even though FormModel.fromJson doesn't parse it.
-        bool? restApiShuffle;
-        try {
-          final rawSettings = await _formsService.getFormRawSettings(
-            _currentFormId!,
-          );
-          if (!mounted) return;
-          if (rawSettings.containsKey('shuffleQuestions')) {
-            restApiShuffle = rawSettings['shuffleQuestions'] as bool?;
-            debugPrint(
-              '=== REST API shuffleQuestions fallback: $restApiShuffle ===',
-            );
-          }
-        } catch (err) {
-          debugPrint('REST API shuffle fallback error: $err');
-        }
-
-        // Priority: Apps Script → REST API → keep current state
-        final effectiveShuffle =
-            appsScriptShuffle ?? restApiShuffle ?? _shuffleQuestions;
+        final effectiveShuffle = appsScriptShuffle ?? _shuffleQuestions;
 
         debugPrint('=== SHUFFLE DEBUG ===');
         debugPrint('Apps Script shuffleQuestions: $appsScriptShuffle');
-        debugPrint('REST API shuffleQuestions: $restApiShuffle');
         debugPrint('Effective shuffleQuestions: $effectiveShuffle');
 
         _safeSetState(() {
-          // Note: emailCollectionType is loaded from REST API response in _loadExistingForm
           _isAcceptingResponses = settings['isAcceptingResponses'] as bool? ?? true;
           _limitOneResponse = settings['limitOneResponse'] as bool? ?? false;
           _editAfterSubmit = settings['editAfterSubmit'] as bool? ?? false;
           _showProgressBar = settings['showProgressBar'] as bool? ?? false;
           _shuffleQuestions = effectiveShuffle;
-          // Note: sendResponseCopy is not supported by the Google Forms API
-          // It's always returned as false from the Apps Script
           _sendResponseCopy = settings['sendResponseCopy'] as bool? ?? false;
           final msg = settings['confirmationMessage'] as String?;
           if (msg != null && msg.isNotEmpty) {
             _confirmationMessageController.text = msg;
           }
-          // Fallback: read linkedSheetId from Apps Script if REST API didn't have it
           _linkedSheetId ??= settings['linkedSheetId'] as String?;
         });
         debugPrint('=== _loadFormSettings SETTINGS APPLIED SUCCESSFULLY ===');
@@ -6628,24 +6666,6 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   /// Load publish settings from the REST API.
-  Future<void> _loadPublishSettings() async {
-    if (_currentFormId == null) return;
-    final result = await _formsService.getPublishSettings(_currentFormId!);
-    if (!mounted) return;
-    if (result != null) {
-      _safeSetState(() {
-        _isPublished = result['isPublished'] as bool? ?? false;
-        final apiAccepting = result['isAcceptingResponses'] as bool?;
-        if (apiAccepting != null) {
-          _isAcceptingResponses = apiAccepting;
-        }
-      });
-      debugPrint('=== PUBLISH SETTINGS LOADED ===');
-      debugPrint('isPublished: $_isPublished');
-      debugPrint('isAcceptingResponses: $_isAcceptingResponses');
-    }
-  }
-
   /// Show reminder dialog when user tries to accept responses on an unpublished form.
   void _showPublishReminder() {
     showDialog(
@@ -6680,6 +6700,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         ],
       ),
     );
+  }
+
+  void _reloadPreview() {
+    if (_webViewController != null && _responderUri != null) {
+      _webViewController!.reload();
+    }
   }
 
   /// Publish or unpublish the form via REST API.
@@ -6718,6 +6744,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         _isPublished = true;
         _isAcceptingResponses = true;
       });
+
+      // Reload the preview WebView so the updated publish state is reflected
+      _reloadPreview();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -6808,6 +6838,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     }
                   });
                   if (result != null && (result['success'] as bool? ?? false)) {
+                    _reloadPreview();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -6830,6 +6861,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== SETTINGS TAB ====================
   Widget _buildSettingsTab() {
+    if (_isLoadingSettings) {
+      return _buildSettingsLoadingSkeleton();
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -6928,9 +6963,648 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             hintText: 'Enter confirmation message',
           ),
         ]),
+        const SizedBox(height: 20),
+
+        // ── Editors Section ──
+        _buildSettingsSectionHeaderWithAction(
+          'Editors',
+          onAdd: _isCurrentUserOwner ? _showAddEditorDialog : null,
+        ),
+        _buildSettingsCard(_buildEditorsSectionChildren()),
         const SizedBox(height: 80),
       ],
     );
+  }
+
+  Widget _buildEditTabSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      child: Column(
+        children: [
+          // Form Info Card skeleton
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: const Column(
+              children: [
+                SizedBox(height: 20),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _SkeletonLine(width: 180, height: 26),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Divider(height: 1, indent: 20, endIndent: 20),
+                SizedBox(height: 20),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _SkeletonLine(width: 240, height: 14),
+                  ),
+                ),
+                SizedBox(height: 6),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _SkeletonLine(width: 160, height: 14),
+                  ),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Question card skeletons
+          _buildSkeletonQuestionCard(),
+          const SizedBox(height: 12),
+          _buildSkeletonQuestionCard(),
+          const SizedBox(height: 12),
+          _buildSkeletonQuestionCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonQuestionCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _SkeletonLine(width: 22, height: 22, radius: 4),
+                SizedBox(width: 12),
+                Expanded(child: _SkeletonLine(height: 14)),
+              ],
+            ),
+            SizedBox(height: 16),
+            Padding(
+              padding: EdgeInsets.only(left: 34),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SkeletonLine(width: 220, height: 14),
+                  SizedBox(height: 14),
+                  _SkeletonLine(width: 180, height: 14),
+                  SizedBox(height: 14),
+                  _SkeletonLine(width: 200, height: 14),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResponseLoadingSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Response count header skeleton
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF673AB7).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            children: [
+              _SkeletonLine(width: 28, height: 28, radius: 14),
+              SizedBox(width: 12),
+              _SkeletonLine(width: 120, height: 20),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Question summary card skeletons
+        _buildSkeletonSummaryCard(),
+        const SizedBox(height: 12),
+        _buildSkeletonSummaryCard(),
+        const SizedBox(height: 12),
+        _buildSkeletonSummaryCard(),
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonSummaryCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE8EAED)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SkeletonLine(width: 28, height: 24, radius: 4),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SkeletonLine(width: 200, height: 16),
+                      SizedBox(height: 6),
+                      _SkeletonLine(width: 90, height: 12, color: Color(0xFFF1F3F4)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            // Bar chart skeleton
+            Padding(
+              padding: EdgeInsets.only(left: 40),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(child: _SkeletonLine(height: 32, radius: 2)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: _SkeletonLine(height: 56, radius: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(child: _SkeletonLine(height: 40, radius: 2)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    flex: 3,
+                    child: _SkeletonLine(height: 72, radius: 2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsLoadingSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // ── Responses Section Skeleton ──
+        _buildSettingsSectionHeader('Responses'),
+        _buildSettingsCard([
+          _buildSkeletonRow(),
+          const Divider(height: 1, indent: 56),
+          _buildSkeletonRow(),
+          const Divider(height: 1, indent: 56),
+          _buildSkeletonRow(),
+          const Divider(height: 1, indent: 56),
+          _buildSkeletonRow(),
+        ]),
+        const SizedBox(height: 20),
+
+        // ── Presentation Section Skeleton ──
+        _buildSettingsSectionHeader('Presentation'),
+        _buildSettingsCard([
+          _buildSkeletonRow(),
+          const Divider(height: 1, indent: 56),
+          _buildSkeletonRow(),
+          const Divider(height: 1, indent: 56),
+          _buildSkeletonRow(),
+        ]),
+        const SizedBox(height: 20),
+
+        // ── Editors Section Skeleton ──
+        _buildSettingsSectionHeader('Editors'),
+        _buildSettingsCard([
+          _buildSkeletonEditorRow(),
+          const Divider(height: 1, indent: 72),
+          _buildSkeletonEditorRow(),
+        ]),
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          const _SkeletonLine(width: 22, height: 22, radius: 4),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                _SkeletonLine(height: 14, width: 140),
+                SizedBox(height: 6),
+                _SkeletonLine(height: 11, width: 200, color: Color(0xFFF1F3F4)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          const _SkeletonLine(width: 46, height: 26, radius: 13),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonEditorRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const _SkeletonLine(width: 40, height: 40, radius: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                _SkeletonLine(height: 14, width: 120),
+                SizedBox(height: 6),
+                _SkeletonLine(height: 11, width: 180, color: Color(0xFFF1F3F4)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildEditorsSectionChildren() {
+    if (_isLoadingEditors) {
+      return [
+        _buildSkeletonEditorRow(),
+        const Divider(height: 1, indent: 72),
+        _buildSkeletonEditorRow(),
+      ];
+    }
+
+    final children = <Widget>[];
+
+    if (_owner != null) {
+      children.add(_buildEditorItem(_owner!, isOwnerRow: true));
+    }
+
+    if (_editors.isEmpty) {
+      if (_owner != null) {
+        children.add(const Divider(height: 1, indent: 72));
+      }
+      children.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Text(
+            _owner == null
+                ? 'No collaborators found for this form.'
+                : _isCurrentUserOwner
+                    ? 'No editors yet. Tap +Add to invite someone by Gmail.'
+                    : 'No editors on this form.',
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF80868B),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+      return children;
+    }
+
+    if (_owner != null) {
+      children.add(const Divider(height: 1, indent: 72));
+    }
+
+    for (var i = 0; i < _editors.length; i++) {
+      if (i > 0) {
+        children.add(const Divider(height: 1, indent: 72));
+      }
+      children.add(_buildEditorItem(_editors[i]));
+    }
+    return children;
+  }
+
+  Widget _buildSettingsSectionHeaderWithAction(
+    String title, {
+    VoidCallback? onAdd,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4, right: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF673AB7),
+              ),
+            ),
+          ),
+          if (onAdd != null)
+            TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF673AB7),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(44, 44),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditorItem(FormEditor editor, {bool isOwnerRow = false}) {
+    final initial = editor.displayLabel.isNotEmpty
+        ? editor.displayLabel[0].toUpperCase()
+        : '?';
+    final showDelete = _isCurrentUserOwner && !isOwnerRow && !editor.isOwner;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: const Color(0xFF673AB7),
+            backgroundImage: editor.photoUrl != null
+                ? CachedNetworkImageProvider(editor.photoUrl!)
+                : null,
+            child: editor.photoUrl == null
+                ? Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  editor.displayLabel,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF202124),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (editor.displayName?.trim().isNotEmpty == true ||
+                    isOwnerRow) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    editor.email,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF80868B),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (isOwnerRow)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDE7F6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Owner',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF673AB7),
+                ),
+              ),
+            )
+          else if (showDelete)
+            IconButton(
+              onPressed: () => _showRemoveEditorConfirmation(editor),
+              icon: const Icon(Icons.person_remove_outlined),
+              color: const Color(0xFF5F6368),
+              tooltip: 'Remove editor',
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadEditors() async {
+    final formId = _currentFormId;
+    if (formId == null || formId.isEmpty) return;
+
+    _safeSetState(() => _isLoadingEditors = true);
+
+    final result = await _formsService.listEditors(formId);
+    if (!mounted) return;
+
+    if (result == null) {
+      _safeSetState(() => _isLoadingEditors = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to load editors.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    _safeSetState(() {
+      _editors = result.editors;
+      _owner = result.owner;
+      _isLoadingEditors = false;
+    });
+  }
+
+  Future<void> _showAddEditorDialog() async {
+    if (!_isCurrentUserOwner) return;
+
+    final email = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => const _AddEditorDialog(),
+    );
+
+    if (email != null && email.isNotEmpty && mounted) {
+      await _addEditor(email);
+    }
+  }
+
+  Future<void> _addEditor(String email) async {
+    final formId = _currentFormId;
+    if (formId == null || formId.isEmpty) return;
+
+    final normalizedEmail = email.trim().toLowerCase();
+    final currentUserEmail = _authService.currentUser?.email.toLowerCase();
+
+    if (currentUserEmail != null && normalizedEmail == currentUserEmail) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You are already the owner of this form.'),
+        ),
+      );
+      return;
+    }
+
+    if (_owner?.email.toLowerCase() == normalizedEmail) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This user is already the owner of this form.'),
+        ),
+      );
+      return;
+    }
+
+    if (_editors.any((editor) => editor.email.toLowerCase() == normalizedEmail)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This user is already an editor on this form.'),
+        ),
+      );
+      return;
+    }
+
+    _safeSetState(() => _isLoadingEditors = true);
+
+    final result = await _formsService.addEditor(formId, normalizedEmail);
+    if (!mounted) return;
+
+    if (!result.success) {
+      _safeSetState(() => _isLoadingEditors = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Failed to add editor.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Added $normalizedEmail as an editor.')),
+    );
+    await _loadEditors();
+  }
+
+  Future<void> _showRemoveEditorConfirmation(FormEditor editor) async {
+    if (!_isCurrentUserOwner) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove editor?'),
+        content: Text(
+          'Remove ${editor.displayLabel} from this form? They will no longer be able to edit it.',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Remove',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _removeEditor(editor);
+    }
+  }
+
+  Future<void> _removeEditor(FormEditor editor) async {
+    if (!_isCurrentUserOwner) return;
+
+    final formId = _currentFormId;
+    if (formId == null || formId.isEmpty) return;
+
+    if (editor.isOwner) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The owner cannot be removed.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    _safeSetState(() => _isLoadingEditors = true);
+
+    final result = await _formsService.removeEditor(formId, editor.permissionId);
+    if (!mounted) return;
+
+    if (!result.success) {
+      _safeSetState(() => _isLoadingEditors = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Failed to remove editor.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Removed ${editor.displayLabel}.')),
+    );
+    await _loadEditors();
   }
 
   Widget _buildSettingsSectionHeader(String title) {
@@ -7379,6 +8053,148 @@ class _OneSecondReorderDragStartListener extends ReorderableDragStartListener {
     return DelayedMultiDragGestureRecognizer(
       delay: _holdDelay,
       debugOwner: this,
+    );
+  }
+}
+
+class _SkeletonLine extends StatefulWidget {
+  final double? width;
+  final double height;
+  final double radius;
+  final Color color;
+
+  const _SkeletonLine({
+    this.width,
+    this.height = 14,
+    this.radius = 4,
+    this.color = const Color(0xFFE8EAED),
+  });
+
+  @override
+  State<_SkeletonLine> createState() => _SkeletonLineState();
+}
+
+class _SkeletonLineState extends State<_SkeletonLine>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            gradient: LinearGradient(
+              begin: Alignment(-1.0 + 2.0 * _controller.value, 0),
+              end: Alignment(1.0 + 2.0 * _controller.value, 0),
+              colors: [
+                widget.color,
+                widget.color.withValues(alpha: 0.3),
+                widget.color,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AddEditorDialog extends StatefulWidget {
+  const _AddEditorDialog();
+
+  @override
+  State<_AddEditorDialog> createState() => _AddEditorDialogState();
+}
+
+class _AddEditorDialogState extends State<_AddEditorDialog> {
+  final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      FocusScope.of(context).unfocus();
+      Navigator.pop(context, _emailController.text.trim());
+    }
+  }
+
+  void _cancel() {
+    FocusScope.of(context).unfocus();
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add editor'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _emailController,
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Gmail address',
+            hintText: 'name@gmail.com',
+            border: OutlineInputBorder(),
+          ),
+          validator: (value) {
+            final trimmed = value?.trim() ?? '';
+            if (trimmed.isEmpty) {
+              return 'Please enter a Gmail address.';
+            }
+            final emailRegex = RegExp(
+              r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+            );
+            if (!emailRegex.hasMatch(trimmed)) {
+              return 'Please enter a valid email address.';
+            }
+            return null;
+          },
+          onFieldSubmitted: (_) => _submit(),
+        ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      actions: [
+        TextButton(
+          onPressed: _cancel,
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: const Text(
+            'Add',
+            style: TextStyle(color: Color(0xFF673AB7)),
+          ),
+        ),
+      ],
     );
   }
 }

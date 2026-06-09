@@ -324,8 +324,27 @@ class GoogleFormsService {
 
   /// Get a single form by ID
   Future<FormModel?> getForm(String formId) async {
+    final result = await getFormWithAllData(formId);
+    return result['form'] as FormModel?;
+  }
+
+  /// Fetch a form and extract all data in a single API call.
+  /// Returns a map with:
+  /// - 'form': FormModel?
+  /// - 'isPublished': bool
+  /// - 'isAcceptingResponses': bool
+  /// - 'shuffleQuestions': bool?
+  /// - 'emailCollectionType': String?
+  /// - 'linkedSheetId': String?
+  Future<Map<String, dynamic>> getFormWithAllData(String formId) async {
     final token = await _authService.getFreshAccessToken();
-    if (token == null) return null;
+    if (token == null) {
+      return {
+        'form': null,
+        'isPublished': false,
+        'isAcceptingResponses': false,
+      };
+    }
 
     try {
       final response = await http.get(
@@ -334,15 +353,57 @@ class GoogleFormsService {
       );
 
       if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        return FormModel.fromJson(jsonData);
+        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+
+        final form = FormModel.fromJson(jsonData);
+
+        // Extract publish settings from same response
+        bool isPublished = false;
+        bool isAcceptingResponses = false;
+        final publishSettings =
+            jsonData['publishSettings'] as Map<String, dynamic>?;
+        if (publishSettings != null) {
+          final publishState =
+              publishSettings['publishState'] as Map<String, dynamic>?;
+          if (publishState != null) {
+            isPublished = publishState['isPublished'] as bool? ?? false;
+            isAcceptingResponses =
+                publishState['isAcceptingResponses'] as bool? ?? false;
+          }
+        }
+
+        // Extract shuffleQuestions from same response
+        bool? shuffleQuestions;
+        final settingsJson = jsonData['settings'] as Map<String, dynamic>?;
+        if (settingsJson != null &&
+            settingsJson.containsKey('shuffleQuestions')) {
+          shuffleQuestions = settingsJson['shuffleQuestions'] as bool?;
+        }
+
+        final linkedSheetUri = form.linkedSheetId;
+
+        return {
+          'form': form,
+          'isPublished': isPublished,
+          'isAcceptingResponses': isAcceptingResponses,
+          'shuffleQuestions': shuffleQuestions,
+          'linkedSheetId': linkedSheetUri,
+        };
       } else {
         debugPrint('Get form error: ${response.statusCode}');
-        return null;
+        return {
+          'form': null,
+          'isPublished': false,
+          'isAcceptingResponses': false,
+        };
       }
     } catch (e) {
       debugPrint('Get form exception: $e');
-      return null;
+      return {
+        'form': null,
+        'isPublished': false,
+        'isAcceptingResponses': false,
+      };
     }
   }
 
@@ -1157,6 +1218,169 @@ class GoogleFormsService {
     } catch (e) {
       debugPrint('Get spreadsheet info exception: $e');
       return null;
+    }
+  }
+
+  /// List all user permissions on a form via Drive API.
+  /// Returns editors (writers) and the owner when present.
+  Future<({List<FormEditor> editors, FormEditor? owner})?> listEditors(
+    String formId,
+  ) async {
+    final token = await _authService.getFreshAccessToken();
+    if (token == null) return null;
+
+    try {
+      final uri = Uri.parse(
+        '$_driveBaseUrl/$formId/permissions'
+        '?fields=permissions(id,emailAddress,displayName,photoLink,role,type)',
+      );
+      final response = await http.get(uri, headers: _headers(token));
+
+      debugPrint('=== LIST EDITORS RESPONSE ===');
+      debugPrint('Status: ${response.statusCode}');
+
+      if (response.statusCode != 200) {
+        debugPrint('List editors error: ${response.body}');
+        return null;
+      }
+
+      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+      final permissions =
+          (jsonData['permissions'] as List<dynamic>?) ?? <dynamic>[];
+
+      FormEditor? owner;
+      final editors = <FormEditor>[];
+
+      for (final raw in permissions) {
+        final permission = FormEditor.fromDrivePermission(
+          raw as Map<String, dynamic>,
+        );
+        if (permission.type != 'user') continue;
+        if (permission.email.isEmpty) continue;
+
+        if (permission.isOwner) {
+          owner = permission;
+        } else if (permission.isWriter) {
+          editors.add(permission);
+        }
+      }
+
+      editors.sort(
+        (a, b) => a.displayLabel.toLowerCase().compareTo(
+              b.displayLabel.toLowerCase(),
+            ),
+      );
+
+      return (editors: editors, owner: owner);
+    } catch (e) {
+      debugPrint('List editors exception: $e');
+      return null;
+    }
+  }
+
+  /// Grant writer access to a Gmail account for the given form.
+  Future<({bool success, String? errorMessage})> addEditor(
+    String formId,
+    String email,
+  ) async {
+    final token = await _authService.getFreshAccessToken();
+    if (token == null) {
+      return (success: false, errorMessage: 'Not signed in.');
+    }
+
+    try {
+      final uri = Uri.parse(
+        '$_driveBaseUrl/$formId/permissions?sendNotificationEmail=true',
+      );
+      final response = await http.post(
+        uri,
+        headers: _headers(token),
+        body: jsonEncode({
+          'role': 'writer',
+          'type': 'user',
+          'emailAddress': email.trim(),
+        }),
+      );
+
+      debugPrint('=== ADD EDITOR RESPONSE ===');
+      debugPrint('Status: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return (success: true, errorMessage: null);
+      }
+
+      final body = response.body;
+      debugPrint('Add editor error: $body');
+
+      if (response.statusCode == 403) {
+        return (
+          success: false,
+          errorMessage: 'You do not have permission to add editors.',
+        );
+      }
+      if (response.statusCode == 400 &&
+          body.toLowerCase().contains('already exists')) {
+        return (
+          success: false,
+          errorMessage: 'This user already has access to this form.',
+        );
+      }
+
+      return (
+        success: false,
+        errorMessage: 'Failed to add editor. Please check the email address.',
+      );
+    } catch (e) {
+      debugPrint('Add editor exception: $e');
+      return (
+        success: false,
+        errorMessage: 'Network error. Please try again.',
+      );
+    }
+  }
+
+  /// Remove a collaborator permission from a form.
+  Future<({bool success, String? errorMessage})> removeEditor(
+    String formId,
+    String permissionId,
+  ) async {
+    final token = await _authService.getFreshAccessToken();
+    if (token == null) {
+      return (success: false, errorMessage: 'Not signed in.');
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$_driveBaseUrl/$formId/permissions/$permissionId'),
+        headers: _headers(token),
+      );
+
+      debugPrint('=== REMOVE EDITOR RESPONSE ===');
+      debugPrint('Status: ${response.statusCode}');
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        return (success: true, errorMessage: null);
+      }
+
+      debugPrint('Remove editor error: ${response.body}');
+
+      if (response.statusCode == 403) {
+        return (
+          success: false,
+          errorMessage: 'You do not have permission to remove this editor.',
+        );
+      }
+
+      return (
+        success: false,
+        errorMessage: 'Failed to remove editor. Please try again.',
+      );
+    } catch (e) {
+      debugPrint('Remove editor exception: $e');
+      return (
+        success: false,
+        errorMessage: 'Network error. Please try again.',
+      );
     }
   }
 }

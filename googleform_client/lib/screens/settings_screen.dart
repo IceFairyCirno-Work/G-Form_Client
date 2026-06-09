@@ -88,7 +88,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-      body: ListView(
+      body: SafeArea(
+        child: ListView(
         children: [
           const SizedBox(height: 8),
 
@@ -326,6 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
         ],
+      ),
       ),
     );
   }
