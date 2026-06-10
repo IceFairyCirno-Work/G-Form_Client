@@ -1,0 +1,472 @@
+{
+  "@@locale": "en",
+
+  "appName": "Form",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "discard": "Discard",
+  "continueAction": "Continue",
+  "done": "Done",
+  "remove": "Remove",
+  "add": "Add",
+  "settings": "Settings",
+  "close": "Close",
+  "untitled": "Untitled",
+  "open": "Open",
+  "change": "Change",
+  "export": "Export",
+  "publish": "Publish",
+  "unlink": "Unlink",
+  "duplicate": "Duplicate",
+  "rename": "Rename",
+  "renameForm": "Rename form",
+  "enterNewName": "Enter new name",
+  "documentName": "Document name",
+  "formRenamed": "Form renamed",
+  "failedToRename": "Failed to rename form",
+  "required": "Required",
+  "optional": "Optional",
+  "other": "Other",
+  "description": "Description",
+  "question": "Question",
+  "columns": "Columns",
+  "rows": "Rows",
+  "image": "Image",
+  "video": "Video",
+  "owner": "Owner",
+
+  "loginSubtitle": "Create and manage forms on the go",
+  "signInWithGoogle": "Sign in with Google",
+  "signInFailed": "Sign in failed. Please try again.",
+
+  "tabMyForms": "My forms",
+  "tabTemplates": "Templates",
+  "searchForms": "Search your forms",
+  "searchTemplates": "Search templates",
+  "recentForms": "Recent forms",
+  "noRecentForms": "No recent forms",
+  "noFormsMatching": "No forms matching \"{query}\"",
+  "@noFormsMatching": {
+    "placeholders": {
+      "query": {"type": "String"}
+    }
+  },
+  "tryDifferentSearch": "Try a different search term",
+  "noTemplatesMatching": "No templates matching \"{query}\"",
+  "@noTemplatesMatching": {
+    "placeholders": {
+      "query": {"type": "String"}
+    }
+  },
+  "tryDifferentSearchOrCategory": "Try a different search term or category",
+  "thisIsTheEnd": "-This is the end-",
+  "linkCopiedToClipboard": "Link copied to clipboard",
+  "deleteFormTitle": "Delete form?",
+  "deleteFormContent": "This form will be moved to trash.",
+  "formMovedToTrash": "Form moved to trash",
+  "failedToDeleteForm": "Failed to delete form",
+  "duplicatingForm": "Duplicating form...",
+  "formDuplicated": "Form duplicated!",
+  "failedToDuplicateForm": "Failed to duplicate form",
+  "templateComingSoon": "Template coming soon!",
+  "loadingTemplate": "Loading template...",
+  "failedToLoadTemplate": "Failed to load template. Please try again.",
+  "soon": "Soon",
+  "templateCount": "{count, plural, =1{1 template} other{{count} templates}}",
+  "@templateCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "ownedByAnyone": "Owned by anyone",
+  "ownedByMe": "Owned by me",
+  "notOwnedByMe": "Not owned by me",
+  "lastModified": "Last modified",
+  "lastOpened": "Last opened",
+  "titleAZ": "Title (A–Z)",
+  "copyLink": "Copy link",
+
+  "categoryAll": "All",
+  "categoryWork": "Work",
+  "categoryEducation": "Education",
+  "categoryCommunity": "Community",
+  "categoryHealth": "Health & Wellness",
+
+  "tplPrayerRequestSafety": "Prayer Request for Safety and Protection",
+  "tplPrayerRequestSafetyDesc": "Submit prayer requests for safety and protection",
+  "tplWorkshopEvaluation": "Workshop Evaluation",
+  "tplWorkshopEvaluationDesc": "Evaluate workshop effectiveness",
+  "tplSoccerTryoutEvaluation": "Soccer Tryout Evaluation",
+  "tplSoccerTryoutEvaluationDesc": "Assess soccer tryout performance",
+
+  "tplOralPresentationEvaluation": "Oral Presentation Evaluation Form",
+  "tplOralPresentationEvaluationDesc": "Evaluate oral presentation skills",
+  "tplPeerFeedback": "Peer Feedback Form",
+  "tplPeerFeedbackDesc": "Provide feedback to peers",
+  "tplPresentationFeedback": "Presentation Feedback",
+  "tplPresentationFeedbackDesc": "Give feedback on presentations",
+
+  "tplPatientFeedback": "Patient Feedback Form",
+  "tplPatientFeedbackDesc": "Collect patient feedback on care",
+  "tplChildcareRegistration": "Childcare Registration Form",
+  "tplChildcareRegistrationDesc": "Register children for childcare services",
+  "tplMedicationOrder": "Medication Order Form",
+  "tplMedicationOrderDesc": "Submit medication orders",
+
+  "tplTeamworkCollaborationEvaluation": "Teamwork & Collaboration Evaluation",
+  "tplTeamworkCollaborationEvaluationDesc": "Evaluate team collaboration skills",
+  "tplTrainingDevelopmentFeedback": "Training & Development Feedback Form",
+  "tplTrainingDevelopmentFeedbackDesc": "Provide feedback on training programs",
+  "tplAnnualEmployeePerformanceReview": "Annual Employee Performance Review",
+  "tplAnnualEmployeePerformanceReviewDesc": "Review employee performance annually",
+
+  "useThisTemplate": "Use this template",
+  "failedToCopyTemplate": "Failed to copy template. Please try again.",
+  "untitledForm": "Untitled form",
+  "sectionTitleOf": "Section {n} of {total}",
+  "@sectionTitleOf": {
+    "placeholders": {
+      "n": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "sectionTitle": "Section title",
+  "shortAnswerText": "Short answer text",
+  "longAnswerText": "Long answer text",
+  "imageTitleOptional": "Image title (optional)",
+  "videoTitle": "Video title",
+  "optionLabel": "Option {n}",
+  "@optionLabel": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "youTubeVideo": "YouTube video",
+  "dateFormatWithYear": "MM/DD/YYYY",
+  "dateFormatNoYear": "MM/DD",
+  "timeFormatDuration": "HH:MM:SS",
+  "timeFormatStandard": "HH:MM",
+
+  "googleAccount": "Google Account",
+  "signOut": "Sign out",
+  "signOutTitle": "Sign out?",
+  "signOutContent": "Are you sure you want to sign out of your account?",
+  "goPremium": "Go Premium",
+  "goPremiumDesc": "Unlock all features and remove ads",
+  "about": "About",
+  "privacyPolicy": "Privacy Policy",
+  "termsOfUse": "Terms of Use",
+  "version": "Version 1.0.0",
+  "language": "Language",
+  "languageSystemDefault": "System default",
+  "languageEnglish": "English",
+  "languageJapanese": "日本語",
+  "languageSimplifiedChinese": "简体中文",
+  "languageTraditionalChinese": "繁體中文",
+
+  "tabEdit": "Edit",
+  "tabPreview": "Preview",
+  "tabResponses": "Responses",
+  "tabSettings": "Settings",
+
+  "qTypeMultipleChoice": "Multiple choice",
+  "qTypeCheckboxes": "Checkboxes",
+  "qTypeShortAnswer": "Short answer",
+  "qTypeParagraph": "Paragraph",
+  "qTypeDropdown": "Dropdown",
+  "qTypeImage": "Image",
+  "qTypeVideo": "Video",
+  "qTypeLinearScale": "Linear scale",
+  "qTypeMultipleChoiceGrid": "Multiple choice grid",
+  "qTypeCheckboxGrid": "Checkbox grid",
+  "qTypeDate": "Date",
+  "qTypeTime": "Time",
+  "qTypeInfo": "Info",
+  "qTypeSection": "Section",
+  "qTypeTitleDescription": "Title & description",
+
+  "addQuestion": "Add question",
+  "addImage": "Add image",
+  "addVideo": "Add video",
+  "addInfo": "Add info",
+  "addSection": "Add section",
+  "addYouTubeVideo": "Add YouTube video",
+  "pasteYouTubeUrl": "Paste YouTube URL here",
+  "clickToUploadImage": "Click to upload image",
+  "pasteYouTubeVideoUrl": "Paste YouTube video URL",
+
+  "saving": "Saving...",
+  "formSaved": "Form saved! Link copied to clipboard.",
+  "formSavedWithWarnings": "Form saved! Link copied. {warnings}",
+  "@formSavedWithWarnings": {
+    "placeholders": {
+      "warnings": {"type": "String"}
+    }
+  },
+  "failedToSaveForm": "Failed to save form.",
+  "failedToLoadForm": "Failed to load form.",
+  "saveToPreview": "Save to preview",
+  "saveForm": "Save form",
+  "saveTheFormFirst": "Save the form first to get a link",
+  "saveBeforePublishing": "Please save the form first before publishing.",
+
+  "unsavedChanges": "Unsaved changes",
+  "unsavedChangesBackDesc": "You have unsaved changes. Do you want to save before leaving?",
+  "unsavedChangesPreviewDesc": "Save your form to see the latest preview of your changes.",
+  "dontSave": "Don't save",
+
+  "untitledQuestion": "Untitled Question",
+  "formTitle": "Form title",
+  "formDescription": "Form description",
+  "addOption": "Add option",
+  "columnN": "Column {n}",
+  "@columnN": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "rowN": "Row {n}",
+  "@rowN": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "addColumn": "Add column",
+  "addRow": "Add row",
+  "minValue": "Min value",
+  "maxValue": "Max value",
+  "labelOptional": "Label (optional)",
+  "showDescription": "Show description",
+  "includeYear": "Include year",
+  "duration": "Duration",
+
+  "tooltipDragToReorder": "Drag to reorder question",
+  "tooltipCopyLink": "Copy Link",
+  "tooltipPublished": "Published",
+  "tooltipPublish": "Publish",
+  "tooltipSave": "Save",
+  "tooltipDuplicate": "Duplicate",
+  "tooltipDelete": "Delete",
+  "tooltipMoreOptions": "More options",
+  "tooltipAddImageToQuestion": "Add image to question",
+  "tooltipExportXlsx": "Export as .xlsx",
+  "tooltipExportCsv": "Export as .csv",
+  "tooltipOpenLinkedSheet": "Open linked Google Sheet",
+  "tooltipLinkToSheet": "Link to Google Sheet",
+  "tooltipRemoveEditor": "Remove editor",
+
+  "noPreviewAvailable": "No preview available",
+  "noPreviewDesc": "Save your form first to see a live preview of how it looks to respondents.",
+
+  "saveYourFormFirst": "Save your form first",
+  "needSaveForResponses": "You need to save your form before you can view responses.",
+  "noResponsesYet": "No responses yet",
+  "noResponsesDesc": "Responses will appear here once people submit your form.",
+  "shareThisForm": "Share this form",
+  "responseSubSummary": "Summary",
+  "responseSubQuestion": "Question",
+  "responseSubIndividual": "Individual",
+  "nResponses": "{count, plural, =1{1 response} other{{count} responses}}",
+  "@nResponses": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "noAnswersYet": "No answers yet.",
+  "noGridData": "No grid data.",
+  "andNMore": "... and {n} more",
+  "@andNMore": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "noQuestionsFound": "No questions found.",
+  "questionLabel": "Question:",
+  "questionN": "Question {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "noResponses": "No responses.",
+  "responseNOfTotal": "{n} of {total}",
+  "@responseNOfTotal": {
+    "placeholders": {
+      "n": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "submittedTime": "Submitted: {time}",
+  "@submittedTime": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "responseN": "Response {n}",
+  "@responseN": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "noAnswer": "No answer",
+  "couldNotOpenYouTube": "Could not open YouTube.",
+
+  "exportAs": "Export as {format}",
+  "@exportAs": {
+    "placeholders": {
+      "format": {"type": "String"}
+    }
+  },
+  "enterFileName": "Enter a file name for the export:",
+  "fileName": "File name",
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "responseId": "Response ID",
+  "createTime": "Create Time",
+  "lastSubmittedTime": "Last Submitted Time",
+  "responsesSheet": "Responses",
+  "exportXlsx": "XLSX",
+  "exportCsv": "CSV",
+  "sheets": "Sheets",
+
+  "linkedToSheet": "Linked to Sheet",
+  "responsesAutoSaved": "Responses are automatically saved to this spreadsheet:",
+  "linkedSpreadsheet": "Linked Spreadsheet",
+  "tapToOpenInBrowser": "Tap to open in browser",
+  "openSheet": "Open Sheet",
+  "linkToGoogleSheet": "Link to Google Sheet",
+  "linkSheetDesc": "Form responses will be automatically saved to this spreadsheet. A new sheet tab will be created with all responses.",
+  "createAndLink": "Create & Link",
+  "spreadsheetName": "Spreadsheet name",
+  "unlinkSheetTitle": "Unlink Sheet?",
+  "unlinkSheetDesc": "New form responses will no longer be saved to this spreadsheet. Existing responses in the sheet will not be deleted.",
+  "sheetUnlinked": "Sheet unlinked successfully.",
+  "failedToCreateSheet": "Failed to create spreadsheet. Please try again.",
+  "formLinkedToSheet": "Form linked to \"{name}\" successfully!",
+  "@formLinkedToSheet": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "failedToLink": "Failed to link: {error}",
+  "@failedToLink": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "failedToUnlink": "Failed to unlink: {error}",
+  "@failedToUnlink": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "errorWithMessage": "Error: {message}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "message": {"type": "String"}
+    }
+  },
+
+  "publishRequired": "Publish Required",
+  "publishRequiredDesc": "You need to publish this form before it can accept responses. Would you like to publish it now?",
+  "formPublished": "Form published and now accepting responses!",
+  "failedToPublish": "Failed to publish: {error}",
+  "@failedToPublish": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "formUnpublished": "Form unpublished",
+  "formIsPublished": "Form is published",
+  "copyFormLink": "Copy form link",
+  "unpublishForm": "Unpublish form",
+  "unpublishFormDesc": "Form will stop accepting responses",
+
+  "settingsResponses": "Responses",
+  "settingsPresentation": "Presentation",
+  "settingsEditors": "Editors",
+  "acceptResponses": "Accept responses",
+  "acceptResponsesEnabled": "People can submit responses to this form",
+  "acceptResponsesDisabled": "This form is not accepting responses",
+  "collectEmail": "Collect email addresses",
+  "collectEmailDesc": "Choose how to collect responder emails",
+  "dontCollect": "Don't collect",
+  "verified": "Verified",
+  "responderInput": "Responder input",
+  "limitToOneResponse": "Limit to 1 response",
+  "limitToOneResponseDesc": "Requires responders to sign in",
+  "editAfterSubmit": "Edit after submit",
+  "editAfterSubmitDesc": "Allow responders to edit their response after submission",
+  "showProgressBar": "Show progress bar",
+  "showProgressBarDesc": "Shows a progress bar at the bottom of the form",
+  "shuffleQuestionOrder": "Shuffle question order",
+  "shuffleQuestionOrderDesc": "Questions will appear in a different order for each responder",
+  "confirmationMessage": "Confirmation message",
+  "confirmationMessageDesc": "Message shown after form submission",
+  "enterConfirmationMessage": "Enter confirmation message",
+  "defaultConfirmationMessage": "Your response has been recorded.",
+
+  "addEditor": "Add editor",
+  "gmailAddress": "Gmail address",
+  "gmailHint": "name@gmail.com",
+  "enterGmail": "Please enter a Gmail address.",
+  "enterValidEmail": "Please enter a valid email address.",
+  "removeEditorTitle": "Remove editor?",
+  "removeEditorDesc": "Remove {name} from this form? They will no longer be able to edit it.",
+  "@removeEditorDesc": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "alreadyOwner": "You are already the owner of this form.",
+  "alreadyOwnerOther": "This user is already the owner of this form.",
+  "alreadyEditor": "This user is already an editor on this form.",
+  "failedToAddEditor": "Failed to add editor.",
+  "addedEditor": "Added {email} as an editor.",
+  "@addedEditor": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  },
+  "cannotRemoveOwner": "The owner cannot be removed.",
+  "failedToRemoveEditor": "Failed to remove editor.",
+  "removedEditor": "Removed {name}.",
+  "@removedEditor": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "noOwnerFound": "No collaborators found for this form.",
+  "noEditorsYet": "No editors yet. Tap +Add to invite someone by Gmail.",
+  "noEditorsOnForm": "No editors on this form.",
+  "failedToLoadEditors": "Failed to load editors.",
+
+  "saveChangesTitle": "Save changes?",
+  "breakingChangesDesc": "This change will affect existing responses: {desc}.\n\nDo you want to continue?",
+  "@breakingChangesDesc": {
+    "placeholders": {
+      "desc": {"type": "String"}
+    }
+  },
+
+  "duplicateChoicesError": "You can't have duplicated choices in a multiple choice question.",
+  "invalidDataError": "Invalid data. Please check your form and try again.",
+  "permissionDeniedError": "Permission denied. Please check your Google account access.",
+  "addAtLeastOneQuestion": "Please add at least one question before saving.",
+  "failedToUpdateForm": "Failed to update form.",
+  "failedToLoadCurrentForm": "Failed to load current form data. Please try again.",
+  "couldNotLoadSettings": "Could not load form settings: {error}",
+  "@couldNotLoadSettings": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "linkCopiedToClipboardExclaim": "Link copied to clipboard!",
+
+  "userFallback": "User"
+}

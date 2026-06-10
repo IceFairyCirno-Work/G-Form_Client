@@ -43,7 +43,7 @@ class FormModel {
   String description;
   List<QuestionItem> questions;
   String? responderUri;
-  String? createdTime;
+  String? documentTitle;
   String? linkedSheetId;
 
   // Settings - General
@@ -64,7 +64,7 @@ class FormModel {
     this.description = '',
     List<QuestionItem>? questions,
     this.responderUri,
-    this.createdTime,
+    this.documentTitle,
     this.linkedSheetId,
     this.isAcceptingResponses = true,
     this.collectEmail = false,
@@ -116,7 +116,7 @@ class FormModel {
       title: (json['info'] as Map<String, dynamic>?)?['title'] as String? ?? 'Untitled form',
       description: (json['info'] as Map<String, dynamic>?)?['description'] as String? ?? '',
       responderUri: json['responderUri'] as String?,
-      createdTime: (json['info'] as Map<String, dynamic>?)?['documentTitle'] as String?,
+      documentTitle: (json['info'] as Map<String, dynamic>?)?['documentTitle'] as String?,
       linkedSheetId: json['linkedSheetId'] as String?,
       questions: questions.isNotEmpty ? questions : [QuestionItem()],
       collectEmail: emailType != 'none',

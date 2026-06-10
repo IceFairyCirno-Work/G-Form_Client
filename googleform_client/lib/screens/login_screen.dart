@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:googleform_client/l10n/app_localizations.dart';
 import '../services/google_auth_service.dart';
 import '../utils/responsive.dart';
 import 'home_screen.dart';
@@ -26,8 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sign in failed. Please try again.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).signInFailed),
           backgroundColor: Colors.red,
         ),
       );
@@ -36,6 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final spacerHeight = Responsive.getLandscapeAwareSpacer(context);
 
     return Scaffold(
@@ -48,40 +50,33 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: spacerHeight),
-                // Google Forms Icon
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF673AB7).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Icon(
-                    Icons.description_outlined,
-                    size: 56,
-                    color: Color(0xFF673AB7),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset(
+                    'assets/app_icon.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Title
-                const Text(
-                  'Forms for Google',
-                  style: TextStyle(
+                Text(
+                  l10n.appName,
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF202124),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Create and manage forms on the go',
-                  style: TextStyle(
+                Text(
+                  l10n.loginSubtitle,
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Color(0xFF5F6368),
                   ),
                 ),
                 SizedBox(height: spacerHeight),
-                // Sign In Button
                 if (_isLoading)
                   const CircularProgressIndicator(
                     color: Color(0xFF673AB7),
@@ -111,9 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Sign in with Google',
-                            style: TextStyle(
+                          Text(
+                            l10n.signInWithGoogle,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF3C4043),
@@ -123,14 +118,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Requires access to Google Forms API',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF80868B),
-                  ),
-                ),
                 SizedBox(height: spacerHeight),
               ],
             ),

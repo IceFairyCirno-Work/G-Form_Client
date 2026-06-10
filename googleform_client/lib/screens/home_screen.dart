@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:googleform_client/l10n/app_localizations.dart';
 import '../models/form_model.dart';
-import '../models/question_model.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_forms_service.dart';
+import '../utils/app_strings.dart';
 import '../utils/responsive.dart';
+import '../utils/template_manager.dart';
+import '../widgets/rename_form_dialog.dart';
+import '../widgets/safe_image.dart';
 import 'form_editor_screen.dart';
 import 'settings_screen.dart';
 
@@ -53,6 +57,9 @@ class _HomeScreenState extends State<HomeScreen>
   List<FormCardData> _recentForms = [];
   List<FormCardData> _cachedFilteredForms = [];
   bool _isLoadingForms = false;
+  bool _isLoadingMoreForms = false;
+  bool _hasMoreForms = true;
+  String? _nextPageToken;
   bool _isGridView = true;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -61,6 +68,23 @@ class _HomeScreenState extends State<HomeScreen>
   String _sortBy = 'modified'; // 'modified', 'opened', 'title'
   String _ownershipFilter = 'anyone'; // 'anyone', 'me', 'not_me'
   late final TabController _tabController;
+  final Map<String, String> _templateThumbnails = {};
+  bool _isLoadingTemplateThumbnails = false;
+  bool _isSearchFocused = false;
+
+  static final _thumbnailSizeRegex = RegExp(r'=[shw]\d+$');
+  static String _toHighResThumbnail(String url) {
+    if (url.isEmpty) return '';
+    if (_thumbnailSizeRegex.hasMatch(url)) {
+      return url.replaceFirst(_thumbnailSizeRegex, '=s800');
+    }
+    return url;
+  }
+
+  static bool _isValidImageUrl(String url) {
+    if (url.isEmpty) return false;
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
 
   // ── List view layout tuning knobs ──
   // Recent forms header row corners
@@ -89,12 +113,10 @@ class _HomeScreenState extends State<HomeScreen>
   static const double _headerToItemGap =
       2.0; // ← adjust here (gap between header row and first list item)
 
-  static const List<({String id, String label})> _templateCategoryOptions = [
-    (id: 'all', label: 'All'),
-    (id: 'personal', label: 'Personal'),
-    (id: 'work', label: 'Work'),
-    (id: 'education', label: 'Education'),
-  ];
+  static final List<({String id, String label})> _templateCategoryOptions =
+      TemplateManager.categoryOptions
+          .map((o) => (id: o.id, label: o.id))
+          .toList();
 
   void _updateFilteredForms() {
     if (_searchQuery.isEmpty) {
@@ -122,13 +144,21 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _onSearchFocusChange() {
+    setState(() {
+      _isSearchFocused = _searchFocusNode.hasFocus;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabChange);
+    _searchFocusNode.addListener(_onSearchFocusChange);
     WidgetsBinding.instance.addObserver(this);
     _loadRecentForms();
+    _fetchTemplateThumbnails();
   }
 
   @override
@@ -136,117 +166,36 @@ class _HomeScreenState extends State<HomeScreen>
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _searchController.dispose();
+    _searchFocusNode.removeListener(_onSearchFocusChange);
     _searchFocusNode.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  List<_TemplateData> get _allTemplates => const [
-    _TemplateData(
-      icon: Icons.event_note,
-      iconColor: Color(0xFF1565C0),
-      name: 'Event registration',
-      description: 'Collect RSVPs for an event',
-      formId: '1ALfhPnwCOjbDirEcDx-uGDibMY4ZaNaewbsY3M7TYig',
-      category: 'personal',
-    ),
-    _TemplateData(
-      icon: Icons.local_offer,
-      iconColor: Color(0xFFE65100),
-      name: 'Contact information',
-      description: 'Gather contact details',
-      formId: '13YjRD3LSnrhjRV3OtNzSqcaIA4DvzLI7D8HWbZyy6ys',
-      category: 'personal',
-    ),
-    _TemplateData(
-      icon: Icons.celebration,
-      iconColor: Color(0xFFAD1457),
-      name: 'Party invitation',
-      description: 'Invite people to a party',
-      formId: '1kftKykKAh4iRiABU8nKRebH5LPy63nE0iuKKovj05as',
-      category: 'personal',
-    ),
-    _TemplateData(
-      icon: Icons.assignment,
-      iconColor: Color(0xFF2E7D32),
-      name: 'Order form',
-      description: 'Collect product or service orders',
-      formId: '',
-      category: 'work',
-    ),
-    _TemplateData(
-      icon: Icons.feedback,
-      iconColor: Color(0xFF4527A0),
-      name: 'Feedback form',
-      description: 'Gather customer feedback',
-      formId: '',
-      category: 'work',
-    ),
-    _TemplateData(
-      icon: Icons.videocam,
-      iconColor: Color(0xFF00695C),
-      name: 'Time off request',
-      description: 'Submit and track time off requests',
-      formId: '',
-      category: 'work',
-    ),
-    _TemplateData(
-      icon: Icons.quiz,
-      iconColor: Color(0xFFBF360C),
-      name: 'Assessment',
-      description: 'Evaluate student knowledge',
-      formId: '',
-      category: 'education',
-    ),
-    _TemplateData(
-      icon: Icons.exit_to_app,
-      iconColor: Color(0xFF0277BD),
-      name: 'Exit ticket',
-      description: 'Quick check for understanding',
-      formId: '',
-      category: 'education',
-    ),
-    _TemplateData(
-      icon: Icons.group,
-      iconColor: Color(0xFF795548),
-      name: 'Course evaluation',
-      description: 'Get feedback on a course',
-      formId: '',
-      category: 'education',
-    ),
-  ];
+  List<TemplateData> get _allTemplates => TemplateManager.templates;
 
-  List<_TemplateData> get _filteredTemplates {
-    var templates = _allTemplates;
-    if (_templateCategory != 'all') {
-      templates = templates
-          .where((t) => t.category == _templateCategory)
-          .toList();
+  List<TemplateData> get _filteredTemplates {
+    final base = TemplateManager.filtered(
+      category: _templateCategory,
+    );
+    if (_searchQuery.isEmpty || _tabController.index != 1) {
+      return base;
     }
-    if (_searchQuery.isNotEmpty && _tabController.index == 1) {
-      templates = templates
-          .where(
-            (t) =>
-                t.name.toLowerCase().contains(_searchQuery) ||
-                t.description.toLowerCase().contains(_searchQuery),
-          )
-          .toList();
-    }
-    return templates;
+    return base.where((t) {
+      final name =
+          AppStrings.templateName(context, t.translationKey).toLowerCase();
+      final desc = AppStrings.templateDescription(context, t.translationKey)
+          .toLowerCase();
+      return name.contains(_searchQuery) || desc.contains(_searchQuery);
+    }).toList();
   }
 
   bool get _showTemplateCategoryRows =>
       (_searchQuery.isEmpty || _tabController.index == 0) &&
       _templateCategory == 'all';
 
-  String _templateCategoryLabel(String category) {
-    return switch (category) {
-      'personal' => 'Personal',
-      'work' => 'Work',
-      'education' => 'Education',
-      _ => category,
-    };
-  }
+  String _templateCategoryLabel(String category) =>
+      AppStrings.categoryLabel(context, category);
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -256,23 +205,27 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadRecentForms() async {
-    setState(() => _isLoadingForms = true);
+    setState(() {
+      _isLoadingForms = true;
+      _nextPageToken = null;
+      _hasMoreForms = true;
+    });
     final orderBy = switch (_sortBy) {
       'opened' => 'viewedByMeTime desc',
       'title' => 'name',
       _ => 'modifiedByMeTime desc',
     };
-    final forms = await _formsService.listRecentForms(
+    final result = await _formsService.listRecentForms(
       orderBy: orderBy,
       ownershipFilter: _ownershipFilter,
     );
 
     // Create card data without form details first
-    final cardData = forms
+    final cardData = result.forms
         .map(
           (f) => FormCardData(
             id: f['id'] ?? '',
-            name: f['name'] ?? 'Untitled',
+            name: f['name'] ?? AppLocalizations.of(context).untitled,
             modifiedTime: f['modifiedTime'] ?? '',
             lastOpenedTime: f['lastOpenedTime'] ?? '',
             thumbnailLink: f['thumbnailLink'] ?? '',
@@ -284,12 +237,55 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {
         _recentForms = cardData;
         _isLoadingForms = false;
+        _nextPageToken = result.nextPageToken;
+        _hasMoreForms = result.nextPageToken != null;
       });
       _updateFilteredForms();
     }
 
     // Fetch actual form data for each form in background
     _fetchFormDetails(cardData);
+  }
+
+  Future<void> _loadMoreForms() async {
+    if (_isLoadingMoreForms || !_hasMoreForms) return;
+    setState(() => _isLoadingMoreForms = true);
+
+    final orderBy = switch (_sortBy) {
+      'opened' => 'viewedByMeTime desc',
+      'title' => 'name',
+      _ => 'modifiedByMeTime desc',
+    };
+    final result = await _formsService.listRecentForms(
+      orderBy: orderBy,
+      ownershipFilter: _ownershipFilter,
+      pageToken: _nextPageToken,
+    );
+
+    final newCards = result.forms
+        .map(
+          (f) => FormCardData(
+            id: f['id'] ?? '',
+            name: f['name'] ?? AppLocalizations.of(context).untitled,
+            modifiedTime: f['modifiedTime'] ?? '',
+            lastOpenedTime: f['lastOpenedTime'] ?? '',
+            thumbnailLink: f['thumbnailLink'] ?? '',
+          ),
+        )
+        .toList();
+
+    if (mounted) {
+      setState(() {
+        _recentForms.addAll(newCards);
+        _isLoadingMoreForms = false;
+        _nextPageToken = result.nextPageToken;
+        _hasMoreForms = result.nextPageToken != null;
+      });
+      _updateFilteredForms();
+    }
+
+    // Fetch form details for new cards
+    _fetchFormDetails(newCards);
   }
 
   Future<void> _fetchFormDetails(List<FormCardData> cards) async {
@@ -300,8 +296,13 @@ class _HomeScreenState extends State<HomeScreen>
         i + batchSize > cards.length ? cards.length : i + batchSize,
       );
       final futures = batch.map((card) async {
-        final form = await _formsService.getForm(card.id);
-        return MapEntry(card.id, form);
+        try {
+          final form = await _formsService.getForm(card.id);
+          return MapEntry(card.id, form);
+        } catch (e) {
+          debugPrint('Fetch form detail error for ${card.id}: $e');
+          return null;
+        }
       }).toList();
 
       final results = await Future.wait(futures);
@@ -309,6 +310,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) return;
       setState(() {
         for (final entry in results) {
+          if (entry == null) continue;
           final idx = _recentForms.indexWhere((f) => f.id == entry.key);
           if (idx != -1) {
             _recentForms[idx] = FormCardData(
@@ -324,6 +326,35 @@ class _HomeScreenState extends State<HomeScreen>
       });
       _updateFilteredForms();
     }
+  }
+
+  Future<void> _fetchTemplateThumbnails() async {
+    if (_isLoadingTemplateThumbnails) return;
+
+    final templatesWithIds = _allTemplates
+        .where((t) => t.formId.isNotEmpty)
+        .toList();
+    if (templatesWithIds.isEmpty) return;
+
+    setState(() => _isLoadingTemplateThumbnails = true);
+
+    final results = await Future.wait(
+      templatesWithIds.map((template) async {
+        final link = await _formsService.getThumbnailLink(template.formId);
+        return MapEntry(template.formId, link ?? '');
+      }),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      for (final entry in results) {
+        if (entry.value.isNotEmpty) {
+          _templateThumbnails[entry.key] = entry.value;
+        }
+      }
+      _isLoadingTemplateThumbnails = false;
+    });
   }
 
   void _navigateToFormEditor({String? formId}) {
@@ -391,29 +422,30 @@ class _HomeScreenState extends State<HomeScreen>
     Clipboard.setData(ClipboardData(text: uri));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Link copied to clipboard'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).linkCopiedToClipboard),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
   }
 
   Future<void> _deleteForm(String formId, int index) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete form?'),
-        content: const Text('This form will be moved to trash.'),
+        title: Text(l10n.deleteFormTitle),
+        content: Text(l10n.deleteFormContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -428,16 +460,16 @@ class _HomeScreenState extends State<HomeScreen>
         });
         _updateFilteredForms();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Form moved to trash'),
+          SnackBar(
+            content: Text(l10n.formMovedToTrash),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete form'),
+          SnackBar(
+            content: Text(l10n.failedToDeleteForm),
             backgroundColor: Colors.red,
           ),
         );
@@ -445,12 +477,62 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _renameForm(FormCardData form) async {
+    final l10n = AppLocalizations.of(context);
+    final newName = await RenameFormDialog.show(
+      context,
+      initialName: form.name.isNotEmpty ? form.name : '',
+    );
+
+    if (newName == null || !mounted) return;
+
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty || trimmed == form.name) return;
+
+    final error = await _formsService.renameDriveFile(form.id, trimmed);
+    if (!mounted) return;
+
+    if (error == null) {
+      final recentIndex = _recentForms.indexWhere((f) => f.id == form.id);
+      if (recentIndex >= 0) {
+        final existing = _recentForms[recentIndex];
+        setState(() {
+          _recentForms[recentIndex] = FormCardData(
+            id: existing.id,
+            name: trimmed,
+            modifiedTime: existing.modifiedTime,
+            lastOpenedTime: existing.lastOpenedTime,
+            formData: existing.formData,
+            thumbnailLink: existing.thumbnailLink,
+          );
+        });
+        _updateFilteredForms();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.formRenamed),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.failedToRename),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   Future<void> _duplicateForm(String formId) async {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
@@ -458,11 +540,11 @@ class _HomeScreenState extends State<HomeScreen>
                 strokeWidth: 2,
               ),
             ),
-            SizedBox(width: 12),
-            Text('Duplicating form...'),
+            const SizedBox(width: 12),
+            Text(l10n.duplicatingForm),
           ],
         ),
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
       ),
     );
     final result = await _formsService.duplicateForm(formId);
@@ -471,16 +553,16 @@ class _HomeScreenState extends State<HomeScreen>
       if (result != null) {
         _loadRecentForms();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Form duplicated!'),
+          SnackBar(
+            content: Text(l10n.formDuplicated),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to duplicate form'),
+          SnackBar(
+            content: Text(l10n.failedToDuplicateForm),
             backgroundColor: Colors.red,
           ),
         );
@@ -490,6 +572,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final user = _authService.currentUser;
 
     return Scaffold(
@@ -498,89 +581,127 @@ class _HomeScreenState extends State<HomeScreen>
         backgroundColor: const Color(0xFFF1F1F3),
         elevation: 0,
         centerTitle: true,
-        leading: const SizedBox(width: 48),
-        leadingWidth: 48,
-        title: TextField(
-          controller: _searchController,
-          focusNode: _searchFocusNode,
-          onChanged: (value) {
-            setState(() {
-              _searchQuery = value.trim().toLowerCase();
-            });
-            if (_tabController.index == 0) {
-              _updateFilteredForms();
-            }
-          },
-          decoration: InputDecoration(
-            hintText: _tabController.index == 0
-                ? 'Search your forms'
-                : 'Search templates',
-            hintStyle: const TextStyle(color: Color(0xFF080808), fontSize: 15),
-            prefixIcon: Icon(
-              Icons.search,
-              color: Colors.grey.shade600,
-              size: 22,
-            ),
-            suffixIcon: _searchQuery.isNotEmpty
-                ? IconButton(
-                    icon: Icon(
-                      Icons.clear,
+        leadingWidth: 0,
+        leading: null,
+        titleSpacing: 0,
+        title: AnimatedPadding(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          padding: EdgeInsets.only(left: _isSearchFocused ? 4 : 48),
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.trim().toLowerCase();
+              });
+              if (_tabController.index == 0) {
+                _updateFilteredForms();
+              }
+            },
+            decoration: InputDecoration(
+              hintText: _tabController.index == 0
+                  ? l10n.searchForms
+                  : l10n.searchTemplates,
+              hintStyle: const TextStyle(color: Color(0xFF080808), fontSize: 15, letterSpacing: -0.5),
+              prefixIcon: _isSearchFocused
+                  ? IconButton(
+                      icon: Icon(
+                        Symbols.arrow_back,
+                        color: Colors.grey.shade600,
+                        size: 22,
+                      ),
+                      onPressed: () {
+                        _dismissKeyboard();
+                      },
+                      splashRadius: 16,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 44,
+                        minHeight: 44,
+                      ),
+                    )
+                  : Icon(
+                      Symbols.search,
                       color: Colors.grey.shade600,
-                      size: 20,
+                      size: 22,
                     ),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                      });
-                      _updateFilteredForms();
-                    },
-                  )
-                : null,
-            filled: true,
-            fillColor: const Color(0xFFCCCCCE),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 0,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(28),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(28),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(28),
-              borderSide: BorderSide(
-                color: const Color(0xFF673AB7).withValues(alpha: 0.4),
-                width: 1.5,
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Symbols.clear,
+                        color: Colors.grey.shade600,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                        _updateFilteredForms();
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: const Color(0xFFCCCCCE),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 0,
               ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: BorderSide(
+                  color: const Color(0xFF673AB7).withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
+              ),
+              isDense: true,
             ),
-            isDense: true,
+            style: const TextStyle(fontSize: 15),
           ),
-          style: const TextStyle(fontSize: 15),
         ),
         actions: [
           if (user != null)
-            IconButton(
-              onPressed: () {
-                _searchFocusNode.unfocus();
-                Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsScreen(),
+            ClipRect(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                width: _isSearchFocused ? 0 : 48,
+                child: OverflowBox(
+                  maxWidth: 48,
+                  maxHeight: 48,
+                  alignment: Alignment.center,
+                  child: IgnorePointer(
+                    ignoring: _isSearchFocused,
+                    child: IconButton(
+                      onPressed: () {
+                        _searchFocusNode.unfocus();
+                        Navigator.of(context)
+                            .push(
+                              MaterialPageRoute(
+                                builder: (context) => const SettingsScreen(),
+                              ),
+                            )
+                            .then((_) => setState(() {}));
+                      },
+                      icon: const Icon(
+                        Symbols.settings,
+                        color: Color(0xFF5F6368),
+                        size: 24,
                       ),
-                    )
-                    .then((_) => setState(() {}));
-              },
-              icon: const Icon(
-                Icons.settings_outlined,
-                color: Color(0xFF5F6368),
-                size: 24,
+                      tooltip: l10n.settings,
+                    ),
+                  ),
+                ),
               ),
-              tooltip: 'Settings',
             ),
         ],
         bottom: TabBar(
@@ -599,9 +720,9 @@ class _HomeScreenState extends State<HomeScreen>
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          tabs: const [
-            Tab(text: 'My forms'),
-            Tab(text: 'Templates'),
+          tabs: [
+            Tab(text: l10n.tabMyForms),
+            Tab(text: l10n.tabTemplates),
           ],
         ),
       ),
@@ -618,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen>
         },
         backgroundColor: const Color(0xFF673AB7),
         shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 32),
+        child: const Icon(Symbols.add, color: Colors.white, size: 32),
       ),
       body: SafeArea(
         top: false,
@@ -646,24 +767,24 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Future<void> _previewAndUseTemplate(_TemplateData template) async {
+  Future<void> _previewAndUseTemplate(TemplateData template) async {
+    final l10n = AppLocalizations.of(context);
     if (template.formId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Template coming soon!'),
-          backgroundColor: Color(0xFF9E9E9E),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(l10n.templateComingSoon),
+          backgroundColor: const Color(0xFF9E9E9E),
+          duration: const Duration(seconds: 2),
         ),
       );
       return;
     }
 
-    // Step 1: Show loading and fetch template data
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
@@ -671,11 +792,11 @@ class _HomeScreenState extends State<HomeScreen>
                 strokeWidth: 2,
               ),
             ),
-            SizedBox(width: 12),
-            Text('Loading template...'),
+            const SizedBox(width: 12),
+            Text(l10n.loadingTemplate),
           ],
         ),
-        duration: Duration(seconds: 10),
+        duration: const Duration(seconds: 10),
       ),
     );
 
@@ -686,243 +807,33 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (formData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to load template. Please try again.'),
+        SnackBar(
+          content: Text(l10n.failedToLoadTemplate),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
       return;
     }
 
-    // Step 2: Show preview dialog
-    final shouldUse = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: template.iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(template.icon, color: template.iconColor, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  formData.title,
-                  style: const TextStyle(fontSize: 18),
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (formData.description.isNotEmpty) ...[
-                  Text(
-                    formData.description,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-                ],
-                Text(
-                  '${formData.questions.length} question${formData.questions.length != 1 ? 's' : ''}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF5F6368),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ...formData.questions.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final q = entry.value;
-                  final typeLabel = _questionTypeLabel(q.type);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${index + 1}.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                q.questionText.isNotEmpty
-                                    ? q.questionText
-                                    : 'Untitled question',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                typeLabel,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (q.isRequired)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Text(
-                              '*',
-                              style: TextStyle(
-                                color: Colors.red[700],
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF673AB7),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Use this template'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldUse != true || !mounted) return;
-
-    // Step 3: Copy template to user's Drive
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text('Creating your form from template...'),
-          ],
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FormEditorScreen.templatePreview(
+          previewFormData: formData,
+          templateSourceFormId: template.formId,
+          templateDisplayName:
+              AppStrings.templateName(context, template.translationKey),
         ),
-        duration: Duration(seconds: 10),
       ),
     );
 
-    final copyResult = await _formsService.duplicateForm(
-      template.formId,
-      name: formData.title,
-    );
-
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    if (copyResult != null) {
-      // Step 4: Navigate to form editor
-      final newFormId = copyResult['id']!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Template copied! Opening editor...'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      Navigator.of(context)
-          .push(
-            MaterialPageRoute(
-              builder: (context) => FormEditorScreen(formId: newFormId),
-            ),
-          )
-          .then((_) => _loadRecentForms());
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to copy template. Please try again.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  String _questionTypeLabel(QuestionType type) {
-    switch (type) {
-      case QuestionType.multipleChoice:
-        return 'Multiple choice';
-      case QuestionType.checkbox:
-        return 'Checkboxes';
-      case QuestionType.shortAnswer:
-        return 'Short answer';
-      case QuestionType.paragraph:
-        return 'Paragraph';
-      case QuestionType.dropdown:
-        return 'Dropdown';
-      case QuestionType.linearScale:
-        return 'Linear scale';
-      case QuestionType.multipleChoiceGrid:
-        return 'Multiple choice grid';
-      case QuestionType.checkboxGrid:
-        return 'Checkbox grid';
-      case QuestionType.date:
-        return 'Date';
-      case QuestionType.time:
-        return 'Time';
-      case QuestionType.image:
-        return 'Image';
-      case QuestionType.video:
-        return 'Video';
-      case QuestionType.info:
-        return 'Title & description';
-      case QuestionType.section:
-        return 'Section';
-    }
+    _loadRecentForms();
   }
 
   /// My Forms tab — Grid view wrapped in a white container (like Templates tab).
   Widget _buildMyFormsGridView() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
@@ -931,21 +842,241 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_headerTopRadius),
-        child: RefreshIndicator(
-          onRefresh: _loadRecentForms,
-          child: CustomScrollView(
-            slivers: [
-              // Recent Forms Header row
-              SliverToBoxAdapter(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollEndNotification &&
+                notification.metrics.extentAfter < 200) {
+              _loadMoreForms();
+            }
+            return false;
+          },
+          child: RefreshIndicator(
+            onRefresh: _loadRecentForms,
+            child: CustomScrollView(
+              slivers: [
+                // Recent Forms Header row
+                SliverToBoxAdapter(
+                  child: Container(
+                    height: _headerHeight,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.recentForms,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF202124),
+                            ),
+                          ),
+                        ),
+                        _buildFilterButton(),
+                        const SizedBox(width: 4),
+                        _buildSortButton(),
+                        const SizedBox(width: 4),
+                        _buildAppBarViewToggle(),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Loading / Empty / Filtered states
+                if (_isLoadingForms)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: Responsive.getAdaptiveGridCount(
+                          context,
+                        ),
+                        childAspectRatio: 0.75,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => const _SkeletonFormCard(),
+                        childCount: 6,
+                      ),
+                    ),
+                  )
+                else if (_recentForms.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Symbols.description,
+                              size: 64,
+                              color: Color(0xFFDADCE0),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              l10n.noRecentForms,
+                              style: const TextStyle(
+                                color: Color(0xFF80868B),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_cachedFilteredForms.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Symbols.search_off,
+                              size: 64,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              l10n.noFormsMatching(_searchQuery),
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 16,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.tryDifferentSearch,
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    key: ValueKey('grid_$_sortBy'),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: Responsive.getAdaptiveGridCount(
+                          context,
+                        ),
+                        childAspectRatio: 0.75,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      delegate: SliverChildBuilderDelegate((
+                        context,
+                        index,
+                      ) {
+                        final form = _cachedFilteredForms[index];
+                        return RepaintBoundary(
+                          child: _buildFormCard(form, index),
+                        );
+                      }, childCount: _cachedFilteredForms.length),
+                    ),
+                  ),
+
+                // Loading more indicator
+                if (_isLoadingMoreForms)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Color(0xFF673AB7),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 24, bottom: 80),
+                    child: Center(
+                      child: Text(
+                        _hasMoreForms
+                            ? ''
+                            : l10n.thisIsTheEnd,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF80868B),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// My Forms tab — List view with the original layout (unchanged).
+  Widget _buildMyFormsListView() {
+    final l10n = AppLocalizations.of(context);
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollEndNotification &&
+            notification.metrics.extentAfter < 200) {
+          _loadMoreForms();
+        }
+        return false;
+      },
+      child: RefreshIndicator(
+        onRefresh: _loadRecentForms,
+        child: CustomScrollView(
+          slivers: [
+            // Recent Forms Header — list-item style card
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  _headerHorizontalPadding,
+                  0,
+                  _headerHorizontalPadding,
+                  _headerToItemGap,
+                ),
                 child: Container(
                   height: _headerHeight,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(_headerTopRadius),
+                      topRight: Radius.circular(_headerTopRadius),
+                      bottomLeft: Radius.circular(_headerBottomRadius),
+                      bottomRight: Radius.circular(_headerBottomRadius),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Recent forms',
-                          style: TextStyle(
+                          l10n.recentForms,
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF202124),
@@ -961,297 +1092,137 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               ),
+            ),
 
-              // Loading / Empty / Filtered states
-              if (_isLoadingForms)
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: Responsive.getAdaptiveGridCount(
-                            context,
-                          ),
-                          childAspectRatio: 0.75,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => const _SkeletonFormCard(),
-                      childCount: 6,
-                    ),
-                  ),
-                )
-              else if (_recentForms.isEmpty)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.description_outlined,
-                            size: 64,
-                            color: Color(0xFFDADCE0),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No recent forms',
-                            style: TextStyle(
-                              color: Color(0xFF80868B),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
+            // Loading / Empty / Filtered states
+            if (_isLoadingForms)
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: _itemHorizontalPadding),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
+                      padding: EdgeInsets.only(
+                        top: index == 0 ? 0 : _itemSpacing / 2,
+                        bottom: _itemSpacing / 2,
                       ),
+                      child: const _SkeletonFormListCard(),
                     ),
-                  ),
-                )
-              else if (_cachedFilteredForms.isEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No forms matching "$_searchQuery"',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try a different search term',
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  key: ValueKey('grid_$_sortBy'),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: Responsive.getAdaptiveGridCount(
-                            context,
-                          ),
-                          childAspectRatio: 0.75,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                    delegate: SliverChildBuilderDelegate((
-                      context,
-                      index,
-                    ) {
-                      final form = _cachedFilteredForms[index];
-                      return RepaintBoundary(
-                        child: _buildFormCard(form, index),
-                      );
-                    }, childCount: _cachedFilteredForms.length),
+                    childCount: 10,
                   ),
                 ),
+              )
+            else if (_recentForms.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Symbols.description,
+                          size: 64,
+                          color: Color(0xFFDADCE0),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          l10n.noRecentForms,
+                          style: const TextStyle(
+                            color: Color(0xFF80868B),
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else if (_cachedFilteredForms.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Symbols.search_off,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          l10n.noFormsMatching(_searchQuery),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.tryDifferentSearch,
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverList(
+                key: ValueKey('list_$_sortBy'),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final form = _cachedFilteredForms[index];
+                  return RepaintBoundary(
+                    child: _buildFormListCard(form, index),
+                  );
+                }, childCount: _cachedFilteredForms.length),
+              ),
 
+            // Loading more indicator
+            if (_isLoadingMoreForms)
               const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.only(top: 24, bottom: 80),
+                  padding: EdgeInsets.symmetric(vertical: 16),
                   child: Center(
-                    child: Text(
-                      '-This is the end-',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF80868B),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Color(0xFF673AB7),
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24, bottom: 80),
+                child: Center(
+                  child: Text(
+                    _hasMoreForms
+                        ? ''
+                        : l10n.thisIsTheEnd,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF80868B),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// My Forms tab — List view with the original layout (unchanged).
-  Widget _buildMyFormsListView() {
-    return RefreshIndicator(
-      onRefresh: _loadRecentForms,
-      child: CustomScrollView(
-        slivers: [
-          // Recent Forms Header — list-item style card
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                _headerHorizontalPadding,
-                0,
-                _headerHorizontalPadding,
-                _headerToItemGap,
-              ),
-              child: Container(
-                height: _headerHeight,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(_headerTopRadius),
-                    topRight: Radius.circular(_headerTopRadius),
-                    bottomLeft: Radius.circular(_headerBottomRadius),
-                    bottomRight: Radius.circular(_headerBottomRadius),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Recent forms',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF202124),
-                        ),
-                      ),
-                    ),
-                    _buildFilterButton(),
-                    const SizedBox(width: 4),
-                    _buildSortButton(),
-                    const SizedBox(width: 4),
-                    _buildAppBarViewToggle(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Loading / Empty / Filtered states
-          if (_isLoadingForms)
-            SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: _itemHorizontalPadding),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => Padding(
-                    padding: EdgeInsets.only(
-                      top: index == 0 ? 0 : _itemSpacing / 2,
-                      bottom: _itemSpacing / 2,
-                    ),
-                    child: const _SkeletonFormListCard(),
-                  ),
-                  childCount: 10,
-                ),
-              ),
-            )
-          else if (_recentForms.isEmpty)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.description_outlined,
-                        size: 64,
-                        color: Color(0xFFDADCE0),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No recent forms',
-                        style: TextStyle(
-                          color: Color(0xFF80868B),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else if (_cachedFilteredForms.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No forms matching "$_searchQuery"',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Try a different search term',
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else
-            SliverList(
-              key: ValueKey('list_$_sortBy'),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final form = _cachedFilteredForms[index];
-                return RepaintBoundary(
-                  child: _buildFormListCard(form, index),
-                );
-              }, childCount: _cachedFilteredForms.length),
-            ),
-
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(top: 24, bottom: 80),
-              child: Center(
-                child: Text(
-                  '-This is the end-',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF80868B),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTemplatesTab() {
+    final l10n = AppLocalizations.of(context);
     return GestureDetector(
       onTap: _dismissKeyboard,
       behavior: HitTestBehavior.translucent,
@@ -1275,10 +1246,10 @@ class _HomeScreenState extends State<HomeScreen>
               else
                 _buildTemplateGridView(),
               const SizedBox(height: 24),
-              const Center(
+              Center(
                 child: Text(
-                  '-This is the end-',
-                  style: TextStyle(
+                  l10n.thisIsTheEnd,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF80868B),
                   ),
@@ -1303,7 +1274,7 @@ class _HomeScreenState extends State<HomeScreen>
           final option = _templateCategoryOptions[index];
           final isSelected = _templateCategory == option.id;
           return FilterChip(
-            label: Text(option.label),
+            label: Text(AppStrings.categoryLabel(context, option.id)),
             selected: isSelected,
             onSelected: (_) {
               _dismissKeyboard();
@@ -1336,10 +1307,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildFormPreviewMockup(_TemplateData template) {
-    final isComingSoon = template.formId.isEmpty;
+  Widget _buildFormPreviewMockup(TemplateData template, {double opacity = 1.0}) {
     return Opacity(
-      opacity: isComingSoon ? 0.5 : 1.0,
+      opacity: opacity,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         child: Column(
@@ -1395,108 +1365,151 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildTemplateCard(_TemplateData template) {
-    final isComingSoon = template.formId.isEmpty;
-
-    final card = Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: () => _previewAndUseTemplate(template),
-        borderRadius: BorderRadius.circular(12),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFDADCE0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 2,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _buildFormPreviewMockup(template)),
-                  SizedBox(
-                    height: 58,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            height: 16,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                template.name,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.2,
-                                  color: Color(0xFF202124),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          SizedBox(
-                            height: 28,
-                            child: Text(
-                              template.description,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                height: 1.17,
-                                color: Color(0xFF80868B),
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (isComingSoon)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F3F4),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFDADCE0)),
-                    ),
-                    child: const Text(
-                      'Soon',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF5F6368),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+  Widget _buildTemplateThumbnailFallback(TemplateData template) {
+    return Container(
+      color: const Color(0xFF673AB7),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.description_outlined,
+              color: Colors.white70,
+              size: 32,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              AppStrings.templateName(context, template.translationKey),
+              style: const TextStyle(color: Colors.white70, fontSize: 10),
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
+  }
 
-    return card;
+  Widget _buildTemplateThumbnailArea(TemplateData template) {
+    final isComingSoon = template.formId.isEmpty;
+
+    if (isComingSoon) {
+      return _buildFormPreviewMockup(template, opacity: 0.5);
+    }
+
+    final thumbnailLink = _templateThumbnails[template.formId];
+    if (thumbnailLink == null || thumbnailLink.isEmpty) {
+      return _buildFormPreviewMockup(template);
+    }
+
+    final highResUrl = _toHighResThumbnail(thumbnailLink);
+    if (!_isValidImageUrl(highResUrl)) {
+      return _buildFormPreviewMockup(template);
+    }
+
+    return SafeImageLoader(
+      url: highResUrl,
+      headers: const {'Accept': 'image/*'},
+      fit: BoxFit.cover,
+      cacheWidth: 400,
+      fallback: _buildTemplateThumbnailFallback(template),
+    );
+  }
+
+  Widget _buildTemplateCard(TemplateData template) {
+    final l10n = AppLocalizations.of(context);
+    final isComingSoon = template.formId.isEmpty;
+    final templateName =
+        AppStrings.templateName(context, template.translationKey);
+    final templateDescription =
+        AppStrings.templateDescription(context, template.translationKey);
+
+    return GestureDetector(
+      onTap: () => _previewAndUseTemplate(template),
+      child: Container(
+        clipBehavior: Clip.hardEdge,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildTemplateThumbnailArea(template),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 10, top: 6, bottom: 6, right: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          templateName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: Color(0xFF202124),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          templateDescription,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF5F6368),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (isComingSoon)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFDADCE0)),
+                  ),
+                  child: Text(
+                    l10n.soon,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF5F6368),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildTemplateSectionHeader(String title, int count) {
@@ -1514,7 +1527,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
           Text(
-            '$count template${count == 1 ? '' : 's'}',
+            AppLocalizations.of(context).templateCount(count),
             style: const TextStyle(fontSize: 12, color: Color(0xFF80868B)),
           ),
         ],
@@ -1523,7 +1536,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<Widget> _buildAllCategoriesView() {
-    const categories = ['personal', 'work', 'education'];
+    const categories = ['community', 'education', 'health', 'work'];
     return [
       for (var i = 0; i < categories.length; i++) ...[
         if (i > 0) const SizedBox(height: 24),
@@ -1554,9 +1567,9 @@ class _HomeScreenState extends State<HomeScreen>
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: Responsive.getAdaptiveGridCount(context),
-              childAspectRatio: 0.72,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+              childAspectRatio: 0.75,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
             ),
             itemCount: templates.length,
             itemBuilder: (context, index) {
@@ -1578,9 +1591,9 @@ class _HomeScreenState extends State<HomeScreen>
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: Responsive.getAdaptiveGridCount(context),
-          childAspectRatio: 0.72,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
         itemCount: templates.length,
         itemBuilder: (context, index) {
@@ -1591,21 +1604,22 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildTemplateSearchEmptyState() {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 48),
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
+            Icon(Symbols.search_off, size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
-              'No templates matching "$_searchQuery"',
+              l10n.noTemplatesMatching(_searchQuery),
               style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Try a different search term or category',
+              l10n.tryDifferentSearchOrCategory,
               style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
             ),
           ],
@@ -1615,10 +1629,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFilterButton() {
-    const filterOptions = {
-      'anyone': ('Owned by anyone', Icons.people_outline),
-      'me': ('Owned by me', Icons.person_outline),
-      'not_me': ('Not owned by me', Icons.person_off_outlined),
+    final l10n = AppLocalizations.of(context);
+    final filterOptions = {
+      'anyone': (l10n.ownedByAnyone, Symbols.people_outline),
+      'me': (l10n.ownedByMe, Symbols.person_outline),
+      'not_me': (l10n.notOwnedByMe, Symbols.person_off),
     };
 
     return PopupMenuButton<String>(
@@ -1662,7 +1677,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               const Spacer(),
               if (isSelected)
-                const Icon(Icons.check, size: 18, color: Color(0xFF673AB7)),
+                const Icon(Symbols.check, size: 18, color: Color(0xFF673AB7)),
             ],
           ),
         );
@@ -1672,7 +1687,7 @@ class _HomeScreenState extends State<HomeScreen>
         height: 36,
         child: Center(
           child: Icon(
-            Icons.filter_alt_outlined,
+            Symbols.filter_alt,
             size: 18,
             color: const Color(0xFF5F6368),
           ),
@@ -1682,10 +1697,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildSortButton() {
-    const sortOptions = {
-      'modified': ('Last modified', Icons.schedule),
-      'opened': ('Last opened', Icons.visibility_outlined),
-      'title': ('Title (A\u2013Z)', Icons.sort_by_alpha),
+    final l10n = AppLocalizations.of(context);
+    final sortOptions = {
+      'modified': (l10n.lastModified, Symbols.schedule),
+      'opened': (l10n.lastOpened, Symbols.visibility),
+      'title': (l10n.titleAZ, Symbols.sort_by_alpha),
     };
 
     return PopupMenuButton<String>(
@@ -1729,7 +1745,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               const Spacer(),
               if (isSelected)
-                const Icon(Icons.check, size: 18, color: Color(0xFF673AB7)),
+                const Icon(Symbols.check, size: 18, color: Color(0xFF673AB7)),
             ],
           ),
         );
@@ -1739,7 +1755,7 @@ class _HomeScreenState extends State<HomeScreen>
         height: 36,
         child: Center(
           child: const Icon(
-            Icons.sort_by_alpha,
+            Symbols.sort_by_alpha,
             size: 18,
             color: Color(0xFF5F6368),
           ),
@@ -1784,7 +1800,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               alignment: Alignment.center,
               child: Icon(
-                Icons.view_list,
+                Symbols.view_list,
                 size: 18,
                 color: listSelected
                     ? const Color(0xFF673AB7)
@@ -1815,7 +1831,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               alignment: Alignment.center,
               child: Icon(
-                Icons.grid_view,
+                Symbols.grid_view,
                 size: 18,
                 color: gridSelected
                     ? const Color(0xFF673AB7)
@@ -1829,6 +1845,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildThumbnailFallback(FormCardData form) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       color: const Color(0xFF673AB7),
       child: Center(
@@ -1836,13 +1853,13 @@ class _HomeScreenState extends State<HomeScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
-              Icons.description_outlined,
+              Symbols.description,
               color: Colors.white70,
               size: 32,
             ),
             const SizedBox(height: 4),
             Text(
-              form.name.isNotEmpty ? form.name : 'Untitled',
+              form.name.isNotEmpty ? form.name : l10n.untitled,
               style: const TextStyle(color: Colors.white70, fontSize: 10),
               maxLines: 2,
               textAlign: TextAlign.center,
@@ -1855,6 +1872,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFormCard(FormCardData form, int index) {
+    final l10n = AppLocalizations.of(context);
     return GestureDetector(
       onTap: () => _navigateToFormEditor(formId: form.id),
       onLongPress: () => _showFormContextMenu(context, form, index),
@@ -1877,26 +1895,14 @@ class _HomeScreenState extends State<HomeScreen>
             // Thumbnail area
             Expanded(
               flex: 3,
-              child: form.highResThumbnail.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: form.highResThumbnail,
+              child: form.highResThumbnail.isNotEmpty &&
+                      _isValidImageUrl(form.highResThumbnail)
+                  ? SafeImageLoader(
+                      url: form.highResThumbnail,
+                      headers: const {'Accept': 'image/*'},
                       fit: BoxFit.cover,
-                      memCacheWidth: 400,
-                      placeholder: (context, url) => Container(
-                        color: const Color(0x14673AB7),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0x66673AB7),
-                            ),
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) =>
-                          _buildThumbnailFallback(form),
+                      cacheWidth: 400,
+                      fallback: _buildThumbnailFallback(form),
                     )
                   : _buildThumbnailFallback(form),
             ),
@@ -1913,7 +1919,7 @@ class _HomeScreenState extends State<HomeScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            form.name.isNotEmpty ? form.name : 'Untitled',
+                            form.name.isNotEmpty ? form.name : l10n.untitled,
                             style: const TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 12,
@@ -1939,6 +1945,8 @@ class _HomeScreenState extends State<HomeScreen>
                       child: PopupMenuButton<String>(
                         onSelected: (action) {
                           switch (action) {
+                            case 'rename':
+                              _renameForm(form);
                             case 'share':
                               _shareForm(form.id);
                             case 'delete':
@@ -1947,18 +1955,32 @@ class _HomeScreenState extends State<HomeScreen>
                               _duplicateForm(form.id);
                           }
                         },
-                        itemBuilder: (_) => const [
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'rename',
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Symbols.text_fields,
+                                  size: 20,
+                                  color: Color(0xFF5F6368),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(l10n.rename),
+                              ],
+                            ),
+                          ),
                           PopupMenuItem(
                             value: 'share',
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.link,
+                                const Icon(
+                                  Symbols.link,
                                   size: 20,
                                   color: Color(0xFF5F6368),
                                 ),
-                                SizedBox(width: 12),
-                                Text('Share (copy link)'),
+                                const SizedBox(width: 12),
+                                Text(l10n.copyLink),
                               ],
                             ),
                           ),
@@ -1966,13 +1988,13 @@ class _HomeScreenState extends State<HomeScreen>
                             value: 'duplicate',
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.content_copy,
+                                const Icon(
+                                  Symbols.content_copy,
                                   size: 20,
                                   color: Color(0xFF5F6368),
                                 ),
-                                SizedBox(width: 12),
-                                Text('Duplicate'),
+                                const SizedBox(width: 12),
+                                Text(l10n.duplicate),
                               ],
                             ),
                           ),
@@ -1980,22 +2002,22 @@ class _HomeScreenState extends State<HomeScreen>
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.delete_outline,
+                                const Icon(
+                                  Symbols.delete_outline,
                                   size: 20,
                                   color: Colors.red,
                                 ),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.red),
+                                  l10n.delete,
+                                  style: const TextStyle(color: Colors.red),
                                 ),
                               ],
                             ),
                           ),
                         ],
                         icon: const Icon(
-                          Icons.more_vert,
+                          Symbols.more_vert,
                           size: 16,
                           color: Color(0xFF080808),
                         ),
@@ -2021,6 +2043,7 @@ class _HomeScreenState extends State<HomeScreen>
     FormCardData form,
     int index,
   ) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -2031,24 +2054,35 @@ class _HomeScreenState extends State<HomeScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.link, color: Color(0xFF5F6368)),
-              title: const Text('Share (copy link)'),
+              leading: const Icon(
+                Symbols.text_fields,
+                color: Color(0xFF5F6368),
+              ),
+              title: Text(l10n.rename),
+              onTap: () {
+                Navigator.pop(context);
+                _renameForm(form);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Symbols.link, color: Color(0xFF5F6368)),
+              title: Text(l10n.copyLink),
               onTap: () {
                 Navigator.pop(context);
                 _shareForm(form.id);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.content_copy, color: Color(0xFF5F6368)),
-              title: const Text('Duplicate'),
+              leading: const Icon(Symbols.content_copy, color: Color(0xFF5F6368)),
+              title: Text(l10n.duplicate),
               onTap: () {
                 Navigator.pop(context);
                 _duplicateForm(form.id);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              leading: const Icon(Symbols.delete_outline, color: Colors.red),
+              title: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context);
                 _deleteForm(form.id, index);
@@ -2061,6 +2095,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFormListCard(FormCardData form, int index) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
         _itemHorizontalPadding,
@@ -2102,9 +2137,10 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.description_outlined,
+                    Symbols.list_alt,
                     color: Color(0xFF673AB7),
                     size: 20,
+                    fill: 1,
                   ),
                 ),
               ),
@@ -2116,7 +2152,7 @@ class _HomeScreenState extends State<HomeScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      form.name.isNotEmpty ? form.name : 'Untitled',
+                      form.name.isNotEmpty ? form.name : l10n.untitled,
                       style: const TextStyle(
                         fontWeight: FontWeight.w400,
                         fontSize: 14,
@@ -2140,6 +2176,9 @@ class _HomeScreenState extends State<HomeScreen>
               PopupMenuButton<String>(
                 onSelected: (action) {
                   switch (action) {
+                    case 'rename':
+                      _renameForm(form);
+                      break;
                     case 'share':
                       _shareForm(form.id);
                       break;
@@ -2152,43 +2191,57 @@ class _HomeScreenState extends State<HomeScreen>
                   }
                 },
                 itemBuilder: (ctx) => [
-                  const PopupMenuItem(
-                    value: 'share',
+                  PopupMenuItem(
+                    value: 'rename',
                     child: Row(
                       children: [
-                        Icon(Icons.link, size: 20, color: Color(0xFF5F6368)),
-                        SizedBox(width: 12),
-                        Text('Share (copy link)'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'duplicate',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.content_copy,
+                        const Icon(
+                          Symbols.text_fields,
                           size: 20,
                           color: Color(0xFF5F6368),
                         ),
-                        SizedBox(width: 12),
-                        Text('Duplicate'),
+                        const SizedBox(width: 12),
+                        Text(l10n.rename),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
+                    value: 'share',
+                    child: Row(
+                      children: [
+                        const Icon(Symbols.link, size: 20, color: Color(0xFF5F6368)),
+                        const SizedBox(width: 12),
+                        Text(l10n.copyLink),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'duplicate',
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Symbols.content_copy,
+                          size: 20,
+                          color: Color(0xFF5F6368),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(l10n.duplicate),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Delete', style: TextStyle(color: Colors.red)),
+                        const Icon(Symbols.delete_outline, size: 20, color: Colors.red),
+                        const SizedBox(width: 12),
+                        Text(l10n.delete, style: const TextStyle(color: Colors.red)),
                       ],
                     ),
                   ),
                 ],
                 icon: const Icon(
-                  Icons.more_vert,
+                  Symbols.more_vert,
                   color: Color(0xFF080808),
                   size: 20,
                 ),
@@ -2295,7 +2348,7 @@ class _SkeletonFormCard extends StatelessWidget {
               color: Color(0xFFE8EAED),
               child: Center(
                 child: Icon(
-                  Icons.description_outlined,
+                  Symbols.description,
                   color: Color(0xFFDADCE0),
                   size: 32,
                 ),
@@ -2372,22 +2425,4 @@ class _SkeletonFormListCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TemplateData {
-  final IconData icon;
-  final Color iconColor;
-  final String name;
-  final String description;
-  final String formId;
-  final String category;
-
-  const _TemplateData({
-    required this.icon,
-    required this.iconColor,
-    required this.name,
-    required this.description,
-    required this.formId,
-    required this.category,
-  });
 }

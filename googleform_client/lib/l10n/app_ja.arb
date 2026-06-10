@@ -1,0 +1,501 @@
+{
+  "@@locale": "ja",
+  "appName": "Form",
+  "cancel": "キャンセル",
+  "save": "保存",
+  "delete": "削除",
+  "discard": "破棄",
+  "continueAction": "続行",
+  "done": "完了",
+  "remove": "削除",
+  "add": "追加",
+  "settings": "設定",
+  "close": "閉じる",
+  "untitled": "無題",
+  "open": "開く",
+  "change": "変更",
+  "export": "エクスポート",
+  "publish": "公開",
+  "unlink": "リンク解除",
+  "duplicate": "複製",
+  "rename": "名前を変更",
+  "renameForm": "フォームの名前を変更",
+  "enterNewName": "新しい名前を入力",
+  "documentName": "ドキュメント名",
+  "formRenamed": "フォームの名前を変更しました",
+  "failedToRename": "フォームの名前を変更できませんでした",
+  "required": "必須",
+  "optional": "任意",
+  "other": "その他",
+  "description": "説明",
+  "question": "質問",
+  "columns": "列",
+  "rows": "行",
+  "image": "画像",
+  "video": "動画",
+  "owner": "オーナー",
+  "loginSubtitle": "外出先でもフォームを作成・管理",
+  "signInWithGoogle": "Google でログイン",
+  "signInFailed": "ログインに失敗しました。もう一度お試しください。",
+  "tabMyForms": "マイフォーム",
+  "tabTemplates": "テンプレート",
+  "searchForms": "フォームを検索",
+  "searchTemplates": "テンプレートを検索",
+  "recentForms": "最近のフォーム",
+  "noRecentForms": "最近のフォームはありません",
+  "noFormsMatching": "「{query}」に一致するフォームはありません",
+  "@noFormsMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearch": "別の検索語をお試しください",
+  "noTemplatesMatching": "「{query}」に一致するテンプレートはありません",
+  "@noTemplatesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearchOrCategory": "別の検索語またはカテゴリをお試しください",
+  "thisIsTheEnd": "-これ以上ありません-",
+  "linkCopiedToClipboard": "リンクをクリップボードにコピーしました",
+  "deleteFormTitle": "フォームを削除しますか？",
+  "deleteFormContent": "このフォームはゴミ箱に移動されます。",
+  "formMovedToTrash": "フォームをゴミ箱に移動しました",
+  "failedToDeleteForm": "フォームを削除できませんでした",
+  "duplicatingForm": "フォームを複製しています…",
+  "formDuplicated": "フォームを複製しました！",
+  "failedToDuplicateForm": "フォームを複製できませんでした",
+  "templateComingSoon": "テンプレートは近日公開！",
+  "loadingTemplate": "テンプレートを読み込んでいます…",
+  "failedToLoadTemplate": "テンプレートを読み込めませんでした。もう一度お試しください。",
+  "soon": "近日公開",
+  "templateCount": "{count, plural, =1{テンプレート 1 件} other{テンプレート {count} 件}}",
+  "@templateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownedByAnyone": "すべてのユーザー",
+  "ownedByMe": "自分が所有",
+  "notOwnedByMe": "自分以外が所有",
+  "lastModified": "最終更新日",
+  "lastOpened": "最終閲覧日",
+  "titleAZ": "タイトル (A–Z)",
+  "copyLink": "リンクをコピー",
+  "categoryAll": "すべて",
+  "categoryWork": "仕事",
+  "categoryEducation": "教育",
+  "categoryCommunity": "コミュニティ",
+  "categoryHealth": "健康とウェルネス",
+  "tplPrayerRequestSafety": "安全と保護の祈り",
+  "tplPrayerRequestSafetyDesc": "安全と保護の祈りのリクエストを提出",
+  "tplWorkshopEvaluation": "ワークショップ評価",
+  "tplWorkshopEvaluationDesc": "ワークショップの効果を評価",
+  "tplSoccerTryoutEvaluation": "サッカー選考評価",
+  "tplSoccerTryoutEvaluationDesc": "サッカー選考のパフォーマンスを評価",
+  "tplOralPresentationEvaluation": "口頭発表評価フォーム",
+  "tplOralPresentationEvaluationDesc": "口頭発表スキルを評価",
+  "tplPeerFeedback": "ピアフィードバックフォーム",
+  "tplPeerFeedbackDesc": "ピアにフィードバックを提供",
+  "tplPresentationFeedback": "プレゼンテーションフィードバック",
+  "tplPresentationFeedbackDesc": "プレゼンテーションにフィードバックを提供",
+  "tplPatientFeedback": "患者フィードバックフォーム",
+  "tplPatientFeedbackDesc": "ケアに対する患者のフィードバックを収集",
+  "tplChildcareRegistration": "保育登録フォーム",
+  "tplChildcareRegistrationDesc": "保育サービスに子供を登録",
+  "tplMedicationOrder": "薬剤注文フォーム",
+  "tplMedicationOrderDesc": "薬剤の注文を提出",
+  "tplTeamworkCollaborationEvaluation": "チームワーク・コラボレーション評価",
+  "tplTeamworkCollaborationEvaluationDesc": "チームコラボレーションスキルを評価",
+  "tplTrainingDevelopmentFeedback": "研修・開発フィードバックフォーム",
+  "tplTrainingDevelopmentFeedbackDesc": "研修プログラムにフィードバックを提供",
+  "tplAnnualEmployeePerformanceReview": "年次従業員パフォーマンスレビュー",
+  "tplAnnualEmployeePerformanceReviewDesc": "従業員の年次パフォーマンスをレビュー",
+  "useThisTemplate": "このテンプレートを使用",
+  "failedToCopyTemplate": "テンプレートをコピーできませんでした。もう一度お試しください。",
+  "untitledForm": "無題のフォーム",
+  "sectionTitleOf": "セクション {n} / {total}",
+  "@sectionTitleOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionTitle": "セクションのタイトル",
+  "shortAnswerText": "記述式の回答",
+  "longAnswerText": "段落の回答",
+  "imageTitleOptional": "画像のタイトル（任意）",
+  "videoTitle": "動画のタイトル",
+  "optionLabel": "選択肢 {n}",
+  "@optionLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "youTubeVideo": "YouTube 動画",
+  "dateFormatWithYear": "MM/DD/YYYY",
+  "dateFormatNoYear": "MM/DD",
+  "timeFormatDuration": "HH:MM:SS",
+  "timeFormatStandard": "HH:MM",
+  "googleAccount": "Google アカウント",
+  "signOut": "ログアウト",
+  "signOutTitle": "ログアウトしますか？",
+  "signOutContent": "アカウントからログアウトしてもよろしいですか？",
+  "goPremium": "プレミアムにアップグレード",
+  "goPremiumDesc": "すべての機能を解除し、広告を削除",
+  "about": "情報",
+  "privacyPolicy": "プライバシーポリシー",
+  "termsOfUse": "利用規約",
+  "version": "バージョン 1.0.0",
+  "language": "言語",
+  "languageSystemDefault": "システムのデフォルト",
+  "languageEnglish": "English",
+  "languageJapanese": "日本語",
+  "languageSimplifiedChinese": "简体中文",
+  "languageTraditionalChinese": "繁體中文",
+  "tabEdit": "編集",
+  "tabPreview": "プレビュー",
+  "tabResponses": "回答",
+  "tabSettings": "設定",
+  "qTypeMultipleChoice": "ラジオボタン",
+  "qTypeCheckboxes": "チェックボックス",
+  "qTypeShortAnswer": "記述式(短文)",
+  "qTypeParagraph": "段落",
+  "qTypeDropdown": "ブルダウン",
+  "qTypeImage": "画像",
+  "qTypeVideo": "動画",
+  "qTypeLinearScale": "均等目盛",
+  "qTypeMultipleChoiceGrid": "選択式(グリッド)",
+  "qTypeCheckboxGrid": "チェックボックス (グリッド)",
+  "qTypeDate": "日付",
+  "qTypeTime": "時刻",
+  "qTypeInfo": "見出し",
+  "qTypeSection": "セクション",
+  "qTypeTitleDescription": "タイトルと説明",
+  "addQuestion": "質問を追加",
+  "addImage": "画像を追加",
+  "addVideo": "動画を追加",
+  "addInfo": "見出しを追加",
+  "addSection": "セクションを追加",
+  "addYouTubeVideo": "YouTube 動画を追加",
+  "pasteYouTubeUrl": "YouTube の URL を貼り付け",
+  "clickToUploadImage": "クリックして画像をアップロード",
+  "pasteYouTubeVideoUrl": "YouTube 動画の URL を貼り付け",
+  "saving": "保存中…",
+  "formSaved": "フォームを保存しました！リンクをクリップボードにコピーしました。",
+  "formSavedWithWarnings": "フォームを保存しました！リンクをコピーしました。{warnings}",
+  "@formSavedWithWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToSaveForm": "フォームを保存できませんでした。",
+  "failedToLoadForm": "フォームを読み込めませんでした。",
+  "saveToPreview": "保存してプレビュー",
+  "saveForm": "フォームを保存",
+  "saveTheFormFirst": "リンクを取得するには、まずフォームを保存してください",
+  "saveBeforePublishing": "公開する前にフォームを保存してください。",
+  "unsavedChanges": "未保存の変更",
+  "unsavedChangesBackDesc": "未保存の変更があります。終了する前に保存しますか？",
+  "unsavedChangesPreviewDesc": "最新のプレビューを表示するには、フォームを保存してください。",
+  "dontSave": "保存しない",
+  "untitledQuestion": "無題の質問",
+  "formTitle": "フォームのタイトル",
+  "formDescription": "フォームの説明",
+  "addOption": "選択肢を追加",
+  "columnN": "列 {n}",
+  "@columnN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "rowN": "行 {n}",
+  "@rowN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addColumn": "列を追加",
+  "addRow": "行を追加",
+  "minValue": "最小値",
+  "maxValue": "最大値",
+  "labelOptional": "ラベル（任意）",
+  "showDescription": "説明を表示",
+  "includeYear": "年を含める",
+  "duration": "所要時間",
+  "tooltipDragToReorder": "ドラッグして並べ替え",
+  "tooltipCopyLink": "リンクをコピー",
+  "tooltipPublished": "公開済み",
+  "tooltipPublish": "公開",
+  "tooltipSave": "保存",
+  "tooltipDuplicate": "複製",
+  "tooltipDelete": "削除",
+  "tooltipMoreOptions": "その他のオプション",
+  "tooltipAddImageToQuestion": "質問に画像を追加",
+  "tooltipExportXlsx": ".xlsx としてエクスポート",
+  "tooltipExportCsv": ".csv としてエクスポート",
+  "tooltipOpenLinkedSheet": "リンクされた Google スプレッドシートを開く",
+  "tooltipLinkToSheet": "Google スプレッドシートにリンク",
+  "tooltipRemoveEditor": "編集者を削除",
+  "noPreviewAvailable": "プレビューは利用できません",
+  "noPreviewDesc": "回答者に表示される内容をプレビューするには、まずフォームを保存してください。",
+  "saveYourFormFirst": "まずフォームを保存してください",
+  "needSaveForResponses": "回答を表示するには、まずフォームを保存する必要があります。",
+  "noResponsesYet": "回答はまだありません",
+  "noResponsesDesc": "フォームが送信されると、ここに回答が表示されます。",
+  "shareThisForm": "このフォームを共有",
+  "responseSubSummary": "概要",
+  "responseSubQuestion": "質問",
+  "responseSubIndividual": "個別",
+  "nResponses": "{count, plural, =1{回答 1 件} other{回答 {count} 件}}",
+  "@nResponses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswersYet": "回答はまだありません。",
+  "noGridData": "グリッドデータがありません。",
+  "andNMore": "…他 {n} 件",
+  "@andNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noQuestionsFound": "質問が見つかりません。",
+  "questionLabel": "質問：",
+  "questionN": "質問 {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noResponses": "回答がありません。",
+  "responseNOfTotal": "{n} / {total}",
+  "@responseNOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "submittedTime": "送信日時：{time}",
+  "@submittedTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "responseN": "回答 {n}",
+  "@responseN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswer": "未回答",
+  "couldNotOpenYouTube": "YouTube を開けませんでした。",
+  "exportAs": "{format} としてエクスポート",
+  "@exportAs": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "enterFileName": "エクスポートするファイル名を入力：",
+  "fileName": "ファイル名",
+  "exportFailed": "エクスポートに失敗しました：{error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "responseId": "回答 ID",
+  "createTime": "作成日時",
+  "lastSubmittedTime": "最終送信日時",
+  "responsesSheet": "回答",
+  "exportXlsx": "XLSX",
+  "exportCsv": "CSV",
+  "sheets": "Sheets",
+  "linkedToSheet": "スプレッドシートにリンク済み",
+  "responsesAutoSaved": "回答はこのスプレッドシートに自動保存されます：",
+  "linkedSpreadsheet": "リンクされたスプレッドシート",
+  "tapToOpenInBrowser": "タップしてブラウザで開く",
+  "openSheet": "シートを開く",
+  "linkToGoogleSheet": "Google スプレッドシートにリンク",
+  "linkSheetDesc": "フォームの回答はこのスプレッドシートに自動保存されます。すべての回答を含む新しいシートが作成されます。",
+  "createAndLink": "作成してリンク",
+  "spreadsheetName": "スプレッドシート名",
+  "unlinkSheetTitle": "シートのリンクを解除しますか？",
+  "unlinkSheetDesc": "新しいフォームの回答はこのスプレッドシートに保存されなくなります。既存の回答は削除されません。",
+  "sheetUnlinked": "シートのリンクを解除しました。",
+  "failedToCreateSheet": "スプレッドシートを作成できませんでした。もう一度お試しください。",
+  "formLinkedToSheet": "フォームを「{name}」にリンクしました！",
+  "@formLinkedToSheet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLink": "リンクに失敗しました：{error}",
+  "@failedToLink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUnlink": "リンク解除に失敗しました：{error}",
+  "@failedToUnlink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorWithMessage": "エラー：{message}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "publishRequired": "公開が必要です",
+  "publishRequiredDesc": "回答を受け付けるには、このフォームを公開する必要があります。今すぐ公開しますか？",
+  "formPublished": "フォームを公開し、回答を受け付けています！",
+  "failedToPublish": "公開に失敗しました：{error}",
+  "@failedToPublish": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formUnpublished": "フォームの公開を停止しました",
+  "formIsPublished": "フォームは公開中です",
+  "copyFormLink": "フォームリンクをコピー",
+  "unpublishForm": "フォームの公開を停止",
+  "unpublishFormDesc": "フォームは回答を受け付けなくなります",
+  "settingsResponses": "回答",
+  "settingsPresentation": "プレゼンテーション",
+  "settingsEditors": "編集者",
+  "acceptResponses": "回答を受け付ける",
+  "acceptResponsesEnabled": "このフォームに回答を送信できます",
+  "acceptResponsesDisabled": "このフォームは回答を受け付けていません",
+  "collectEmail": "メールアドレスを収集",
+  "collectEmailDesc": "回答者のメールアドレスの収集方法を選択",
+  "dontCollect": "収集しない",
+  "verified": "確認済み",
+  "responderInput": "回答者の入力",
+  "limitToOneResponse": "回答を 1 回に制限",
+  "limitToOneResponseDesc": "回答者のログインが必要",
+  "editAfterSubmit": "送信後に編集",
+  "editAfterSubmitDesc": "回答者が送信後に回答を編集できるようにする",
+  "showProgressBar": "プログレスバーを表示",
+  "showProgressBarDesc": "フォームの下部にプログレスバーを表示",
+  "shuffleQuestionOrder": "質問の順序をシャッフルする",
+  "shuffleQuestionOrderDesc": "回答者ごとに質問の順序が異なります",
+  "confirmationMessage": "確認メッセージ",
+  "confirmationMessageDesc": "フォーム送信後に表示されるメッセージ",
+  "enterConfirmationMessage": "確認メッセージを入力",
+  "defaultConfirmationMessage": "回答を記録しました。",
+  "addEditor": "編集者を追加",
+  "gmailAddress": "Gmail アドレス",
+  "gmailHint": "name@gmail.com",
+  "enterGmail": "Gmail アドレスを入力してください。",
+  "enterValidEmail": "有効なメールアドレスを入力してください。",
+  "removeEditorTitle": "編集者を削除しますか？",
+  "removeEditorDesc": "{name} をこのフォームから削除しますか？編集できなくなります。",
+  "@removeEditorDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyOwner": "あなたはすでにこのフォームのオーナーです。",
+  "alreadyOwnerOther": "このユーザーはすでにこのフォームのオーナーです。",
+  "alreadyEditor": "このユーザーはすでにこのフォームの編集者です。",
+  "failedToAddEditor": "編集者を追加できませんでした。",
+  "addedEditor": "{email} を編集者として追加しました。",
+  "@addedEditor": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotRemoveOwner": "オーナーは削除できません。",
+  "failedToRemoveEditor": "編集者を削除できませんでした。",
+  "removedEditor": "{name} を削除しました。",
+  "@removedEditor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noOwnerFound": "このフォームの共同編集者が見つかりません。",
+  "noEditorsYet": "編集者はまだいません。+追加 をタップして Gmail で招待してください。",
+  "noEditorsOnForm": "このフォームに編集者はいません。",
+  "failedToLoadEditors": "編集者を読み込めませんでした。",
+  "saveChangesTitle": "変更を保存しますか？",
+  "breakingChangesDesc": "この変更は既存の回答に影響します：{desc}。\n\n続行しますか？",
+  "@breakingChangesDesc": {
+    "placeholders": {
+      "desc": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicateChoicesError": "ラジオボタンの質問に重複した選択肢を設定することはできません。",
+  "invalidDataError": "無効なデータです。フォームを確認してもう一度お試しください。",
+  "permissionDeniedError": "権限が拒否されました。Google アカウントのアクセスを確認してください。",
+  "addAtLeastOneQuestion": "保存する前に、少なくとも 1 つの質問を追加してください。",
+  "failedToUpdateForm": "フォームを更新できませんでした。",
+  "failedToLoadCurrentForm": "現在のフォームデータを読み込めませんでした。もう一度お試しください。",
+  "couldNotLoadSettings": "フォーム設定を読み込めませんでした：{error}",
+  "@couldNotLoadSettings": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "linkCopiedToClipboardExclaim": "リンクをクリップボードにコピーしました！",
+  "userFallback": "ユーザー"
+}

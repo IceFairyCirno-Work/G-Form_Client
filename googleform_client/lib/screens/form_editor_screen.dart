@@ -5,9 +5,10 @@ import 'dart:math';
 import 'package:excel/excel.dart' as excel_lib;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -19,12 +20,36 @@ import '../models/response_model.dart';
 import '../services/apps_script_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_forms_service.dart';
+import '../utils/app_icons.dart';
 import '../utils/responsive.dart';
+import 'package:googleform_client/l10n/app_localizations.dart';
+import '../utils/app_strings.dart';
+import '../widgets/safe_image.dart';
 
 class FormEditorScreen extends StatefulWidget {
   final String? formId;
+  final bool isTemplatePreview;
+  final FormModel? previewFormData;
+  final String? templateSourceFormId;
+  final String? templateDisplayName;
 
-  const FormEditorScreen({super.key, this.formId});
+  const FormEditorScreen({
+    super.key,
+    this.formId,
+    this.isTemplatePreview = false,
+    this.previewFormData,
+    this.templateSourceFormId,
+    this.templateDisplayName,
+  });
+
+  /// Read-only template preview that mirrors the edit tab layout.
+  const FormEditorScreen.templatePreview({
+    super.key,
+    required this.previewFormData,
+    required this.templateSourceFormId,
+    required this.templateDisplayName,
+  })  : formId = null,
+        isTemplatePreview = true;
 
   @override
   State<FormEditorScreen> createState() => _FormEditorScreenState();
@@ -37,6 +62,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   final GoogleAuthService _authService = GoogleAuthService();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _documentTitleController = TextEditingController();
+  final FocusNode _documentTitleFocusNode = FocusNode();
 
   List<QuestionItem> _questions = [];
   List<GlobalKey> _questionKeys = [];
@@ -54,6 +81,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // Section description controllers (keyed by index, lazily created)
   final Map<int, TextEditingController> _sectionDescriptionControllers = {};
+  // Question description controllers (non-section questions, keyed by index)
+  final Map<int, TextEditingController> _questionDescriptionControllers = {};
 
   bool _isSaving = false;
   bool _isLoading = false;
@@ -63,6 +92,24 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   static const double _kReorderCollapsedCardHeight = 52.0;
   static const double _kReorderItemBottomPadding = 12.0;
   static const Duration _kReorderCollapseLeadTime = Duration(milliseconds: 550);
+  // Border-only decoration for list cards — avoids expensive box-shadow compositing during scroll.
+  static const BoxDecoration _kCardDecoration = BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    border: Border.fromBorderSide(BorderSide(color: Color(0xFFDADCE0), width: 1)),
+  );
+  static const BoxDecoration _kFormInfoCardDecoration = BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    boxShadow: [
+      BoxShadow(
+        color: Color(0x0F000000),
+        blurRadius: 2,
+        offset: Offset(0, 1),
+      ),
+    ],
+  );
+  static const Color _kOverlayBlack60 = Color(0x99000000);
   int? _collapsedForReorderIndex;
   bool _reorderDragActive = false;
   Timer? _reorderHoldTimer;
@@ -79,7 +126,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   bool _hasLoadedResponses = false;
   int _responseOrderEpoch = 0;
   int _responseSubTab = 0; // 0=Summary, 1=Question, 2=Individual
-  final PageController _responseSubTabController = PageController(initialPage: 0);
+  final PageController _responseSubTabController = PageController(
+    initialPage: 0,
+  );
   int _selectedQuestionIndex = 0;
   int _selectedIndividualIndex = 0;
 
@@ -95,8 +144,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   bool _editAfterSubmit = false;
   bool _showProgressBar = false;
   final TextEditingController _confirmationMessageController =
-      TextEditingController(text: 'Your response has been recorded.');
+      TextEditingController();
   bool _shuffleQuestions = false;
+  bool _didSetDefaultConfirmation = false;
 
   // Linked sheet state
   String? _linkedSheetId;
@@ -118,20 +168,286 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   // Mutable form ID — tracks the current form after save operations
   // (unlike widget.formId which is immutable and becomes stale after save)
   String? _currentFormId;
-  FormModel? _originalForm; // Original form data from API, used for diff detection
+  String _documentTitle = '';
+  FormModel?
+  _originalForm; // Original form data from API, used for diff detection
+  bool _isUsingTemplate = false;
+
+  bool get _isReadOnly => widget.isTemplatePreview;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didSetDefaultConfirmation &&
+        widget.formId == null &&
+        _confirmationMessageController.text.isEmpty) {
+      _confirmationMessageController.text =
+          AppLocalizations.of(context).defaultConfirmationMessage;
+      _didSetDefaultConfirmation = true;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
-    // Title updates handled by ListenableBuilder in AppBar to avoid full rebuilds
     _currentFormId = widget.formId;
-    if (_currentFormId != null) {
+    if (widget.isTemplatePreview) {
+      _populateFromForm(widget.previewFormData!);
+      _isLoading = false;
+      _isLoadingSettings = false;
+    } else if (_currentFormId != null) {
       _loadExistingForm();
     } else {
       // New form — no settings to load
       _isLoadingSettings = false;
+    }
+  }
+
+  void _populateFromForm(FormModel form) {
+    _originalForm = form;
+    _titleController.text = form.title;
+    _descriptionController.text = form.description;
+
+    for (var c in _questionControllers) {
+      c.dispose();
+    }
+    for (var list in _optionControllers) {
+      for (var c in list) {
+        c.dispose();
+      }
+    }
+    for (var c in _videoUrlControllers) {
+      c.dispose();
+    }
+    for (var list in _gridRowControllers) {
+      for (var c in list) {
+        c.dispose();
+      }
+    }
+    for (var list in _gridColControllers) {
+      for (var c in list) {
+        c.dispose();
+      }
+    }
+    for (var c in _scaleLowLabelControllers) {
+      c?.dispose();
+    }
+    for (var c in _scaleHighLabelControllers) {
+      c?.dispose();
+    }
+    for (var c in _sectionDescriptionControllers.values) {
+      c.dispose();
+    }
+    _sectionDescriptionControllers.clear();
+    for (var c in _questionDescriptionControllers.values) {
+      c.dispose();
+    }
+    _questionDescriptionControllers.clear();
+
+    _questions = form.questions;
+    _questionKeys = form.questions.map((_) => GlobalKey()).toList();
+    _questionControllers = form.questions
+        .map((q) => TextEditingController(text: q.questionText))
+        .toList();
+    _optionControllers = form.questions
+        .map(
+          (q) => q.options.map((o) => TextEditingController(text: o)).toList(),
+        )
+        .toList();
+    _videoUrlControllers = form.questions
+        .map((q) => TextEditingController(text: q.mediaUrl ?? ''))
+        .toList();
+    _gridRowControllers = form.questions
+        .map(
+          (q) => q.gridRows.map((r) => TextEditingController(text: r)).toList(),
+        )
+        .toList();
+    _gridColControllers = form.questions
+        .map(
+          (q) =>
+              q.gridColumns.map((c) => TextEditingController(text: c)).toList(),
+        )
+        .toList();
+    _scaleLowLabelControllers = form.questions
+        .map(
+          (q) => q.scaleLowLabel != null
+              ? TextEditingController(text: q.scaleLowLabel)
+              : null,
+        )
+        .toList();
+    _scaleHighLabelControllers = form.questions
+        .map(
+          (q) => q.scaleHighLabel != null
+              ? TextEditingController(text: q.scaleHighLabel)
+              : null,
+        )
+        .toList();
+    for (int i = 0; i < form.questions.length; i++) {
+      final q = form.questions[i];
+      if (q.type == QuestionType.section && q.description != null) {
+        _sectionDescriptionControllers[i] = TextEditingController(
+          text: q.description,
+        );
+      } else if (q.type != QuestionType.section &&
+          q.description != null &&
+          q.description!.isNotEmpty) {
+        _questionDescriptionControllers[i] = TextEditingController(
+          text: q.description,
+        );
+      }
+    }
+    _responderUri = form.responderUri;
+    _emailCollectionType = form.emailCollectionType;
+    _collectEmail = _emailCollectionType != 'none';
+    _linkedSheetId = form.linkedSheetId;
+    final docTitle = form.documentTitle?.trim().isNotEmpty == true
+        ? form.documentTitle!.trim()
+        : form.title.trim();
+    _documentTitle = docTitle;
+    _documentTitleController.text = docTitle;
+  }
+
+  void _dismissDocumentTitleKeyboard() {
+    _documentTitleFocusNode.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  String _normalizedDocumentTitle(AppLocalizations l10n) {
+    final trimmed = _documentTitleController.text.trim();
+    return trimmed.isEmpty ? l10n.untitledForm : trimmed;
+  }
+
+  void _onDocumentTitleChanged() {
+    final l10n = AppLocalizations.of(context);
+    if (_normalizedDocumentTitle(l10n) != _documentTitle) {
+      _markDirty();
+    }
+  }
+
+  /// Normalize the in-progress title and dismiss the keyboard (no API call).
+  Future<void> _finalizeDocumentTitleEditing() async {
+    if (!mounted) return;
+
+    _dismissDocumentTitleKeyboard();
+
+    final l10n = AppLocalizations.of(context);
+    final trimmed = _normalizedDocumentTitle(l10n);
+    if (trimmed != _documentTitleController.text) {
+      _documentTitleController.text = trimmed;
+    }
+    if (trimmed != _documentTitle) {
+      _markDirty();
+    }
+  }
+
+  /// Persist document title to Drive when saving an existing form.
+  Future<bool> _applyDocumentTitleOnSave() async {
+    if (!mounted) return false;
+
+    final l10n = AppLocalizations.of(context);
+    final trimmed = _normalizedDocumentTitle(l10n);
+    if (trimmed == _documentTitle) return true;
+
+    if (_currentFormId == null || _currentFormId!.isEmpty) {
+      _documentTitle = trimmed;
+      return true;
+    }
+
+    final error = await _formsService.renameDocumentTitle(
+      _currentFormId!,
+      trimmed,
+    );
+
+    if (!mounted) return false;
+
+    if (error == null) {
+      _documentTitle = trimmed;
+      return true;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.failedToRename),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    return false;
+  }
+
+  void _revertDocumentTitleEditing() {
+    _documentTitleController.text = _documentTitle;
+  }
+
+  double _appBarDocumentTitleMaxWidth(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    // Leading back button + action icons on the right.
+    return (screenWidth - 200).clamp(120.0, screenWidth);
+  }
+
+  Widget _buildAppBarDocumentTitleField(AppLocalizations l10n) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: _appBarDocumentTitleMaxWidth(context),
+      ),
+      child: TextField(
+        key: const ValueKey('app_bar_document_title'),
+        controller: _documentTitleController,
+        focusNode: _documentTitleFocusNode,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+        ),
+        cursorColor: Colors.white,
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: l10n.untitledForm,
+          hintStyle: const TextStyle(
+            color: Colors.white70,
+            fontSize: 18,
+          ),
+          contentPadding: EdgeInsets.zero,
+        ),
+        textInputAction: TextInputAction.done,
+        onChanged: (_) => _onDocumentTitleChanged(),
+        onSubmitted: (_) => unawaited(_finalizeDocumentTitleEditing()),
+      ),
+    );
+  }
+
+  Future<void> _useTemplate() async {
+    if (_isUsingTemplate || widget.templateSourceFormId == null) return;
+
+    setState(() => _isUsingTemplate = true);
+
+    final copyResult = await _formsService.duplicateForm(
+      widget.templateSourceFormId!,
+      name: _titleController.text.isNotEmpty
+          ? _titleController.text
+          : widget.previewFormData?.title,
+    );
+
+    if (!mounted) return;
+
+    if (copyResult != null) {
+      final newFormId = copyResult['id']!;
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => FormEditorScreen(formId: newFormId),
+        ),
+      );
+    } else {
+      setState(() => _isUsingTemplate = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).failedToCopyTemplate),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -144,106 +460,21 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     if (!mounted) return;
 
     if (form != null) {
-      _originalForm = form;
-      _titleController.text = form.title;
-      _descriptionController.text = form.description;
-
-      // Dispose old controllers
-      for (var c in _questionControllers) {
-        c.dispose();
-      }
-      for (var list in _optionControllers) {
-        for (var c in list) {
-          c.dispose();
-        }
-      }
-      for (var c in _videoUrlControllers) {
-        c.dispose();
-      }
-      for (var list in _gridRowControllers) {
-        for (var c in list) {
-          c.dispose();
-        }
-      }
-      for (var list in _gridColControllers) {
-        for (var c in list) {
-          c.dispose();
-        }
-      }
-      for (var c in _scaleLowLabelControllers) {
-        c?.dispose();
-      }
-      for (var c in _scaleHighLabelControllers) {
-        c?.dispose();
-      }
-      for (var c in _sectionDescriptionControllers.values) {
-        c.dispose();
-      }
-      _sectionDescriptionControllers.clear();
-
-      // Extract publish settings & shuffle from the same API response
       final isPublished = formData['isPublished'] as bool? ?? false;
       final isAcceptingResponses =
           formData['isAcceptingResponses'] as bool? ?? false;
       final shuffleQuestions = formData['shuffleQuestions'] as bool?;
 
+      _populateFromForm(form);
+      final driveName = await _formsService.getDriveFileName(_currentFormId!);
+      if (!mounted) return;
       setState(() {
-        _questions = form.questions;
-        _questionKeys = form.questions.map((_) => GlobalKey()).toList();
-        _questionControllers = form.questions
-            .map((q) => TextEditingController(text: q.questionText))
-            .toList();
-        _optionControllers = form.questions
-            .map(
-              (q) =>
-                  q.options.map((o) => TextEditingController(text: o)).toList(),
-            )
-            .toList();
-        _videoUrlControllers = form.questions
-            .map((q) => TextEditingController(text: q.mediaUrl ?? ''))
-            .toList();
-        _gridRowControllers = form.questions
-            .map(
-              (q) => q.gridRows
-                  .map((r) => TextEditingController(text: r))
-                  .toList(),
-            )
-            .toList();
-        _gridColControllers = form.questions
-            .map(
-              (q) => q.gridColumns
-                  .map((c) => TextEditingController(text: c))
-                  .toList(),
-            )
-            .toList();
-        _scaleLowLabelControllers = form.questions
-            .map(
-              (q) => q.scaleLowLabel != null
-                  ? TextEditingController(text: q.scaleLowLabel)
-                  : null,
-            )
-            .toList();
-        _scaleHighLabelControllers = form.questions
-            .map(
-              (q) => q.scaleHighLabel != null
-                  ? TextEditingController(text: q.scaleHighLabel)
-                  : null,
-            )
-            .toList();
-        for (int i = 0; i < form.questions.length; i++) {
-          final q = form.questions[i];
-          if (q.type == QuestionType.section && q.description != null) {
-            _sectionDescriptionControllers[i] = TextEditingController(text: q.description);
-          }
+        if (driveName != null && driveName.trim().isNotEmpty) {
+          _documentTitle = driveName.trim();
+          _documentTitleController.text = driveName.trim();
         }
-        _responderUri = form.responderUri;
-        _emailCollectionType = form.emailCollectionType;
-        _collectEmail = _emailCollectionType != 'none';
-        _linkedSheetId = form.linkedSheetId;
-        // Apply publish settings from the same API call
         _isPublished = isPublished;
         _isAcceptingResponses = isAcceptingResponses;
-        // Apply shuffle from the same API call (may be overridden by Apps Script)
         if (shuffleQuestions != null) {
           _shuffleQuestions = shuffleQuestions;
         }
@@ -279,8 +510,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           _isLoadingSettings = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to load form.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToLoadForm),
             backgroundColor: Colors.red,
           ),
         );
@@ -294,6 +525,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     _tabController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
+    _documentTitleController.dispose();
+    _documentTitleFocusNode.dispose();
     _scrollController.dispose();
     _responseSubTabController.dispose();
     _confirmationMessageController.dispose();
@@ -327,7 +560,73 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     for (var c in _sectionDescriptionControllers.values) {
       c.dispose();
     }
+    for (var c in _questionDescriptionControllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController _questionDescriptionController(int index) {
+    return _questionDescriptionControllers.putIfAbsent(
+      index,
+      () => TextEditingController(
+        text: _questions[index].description ?? '',
+      ),
+    );
+  }
+
+  void _remapIndexKeyedControllersOnDelete(
+    Map<int, TextEditingController> map,
+    int deletedIndex,
+  ) {
+    final oldMap = Map<int, TextEditingController>.from(map);
+    map.clear();
+    oldMap[deletedIndex]?.dispose();
+    for (final entry in oldMap.entries) {
+      if (entry.key < deletedIndex) {
+        map[entry.key] = entry.value;
+      } else if (entry.key > deletedIndex) {
+        map[entry.key - 1] = entry.value;
+      }
+    }
+  }
+
+  void _remapIndexKeyedControllersOnInsert(
+    Map<int, TextEditingController> map,
+    int insertIndex,
+  ) {
+    final oldMap = Map<int, TextEditingController>.from(map);
+    map.clear();
+    for (final entry in oldMap.entries) {
+      if (entry.key < insertIndex) {
+        map[entry.key] = entry.value;
+      } else {
+        map[entry.key + 1] = entry.value;
+      }
+    }
+  }
+
+  void _remapIndexKeyedControllersOnMove(
+    Map<int, TextEditingController> map,
+    int oldIndex,
+    int newIndex,
+  ) {
+    final oldMap = Map<int, TextEditingController>.from(map);
+    map.clear();
+
+    int newKeyFor(int oldKey) {
+      if (oldKey == oldIndex) return newIndex;
+      if (oldIndex < newIndex) {
+        if (oldKey > oldIndex && oldKey <= newIndex) return oldKey - 1;
+      } else if (oldIndex > newIndex) {
+        if (oldKey >= newIndex && oldKey < oldIndex) return oldKey + 1;
+      }
+      return oldKey;
+    }
+
+    for (final entry in oldMap.entries) {
+      map[newKeyFor(entry.key)] = entry.value;
+    }
   }
 
   bool _isNonOptionType(QuestionType type) {
@@ -351,8 +650,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   /// Returns the total number of sections (always at least 1 — the implicit first section).
   int _getSectionCount() {
-    final explicitSections =
-        _questions.where((q) => q.type == QuestionType.section).length;
+    final explicitSections = _questions
+        .where((q) => q.type == QuestionType.section)
+        .length;
     return explicitSections + 1;
   }
 
@@ -385,11 +685,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   /// focus during the rebuild (e.g. after adding a new question).
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
-    FocusScope.of(context).unfocus();
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final editingDocumentTitle = _documentTitleFocusNode.hasFocus;
+    if ((primaryFocus?.hasFocus ?? false) && !editingDocumentTitle) {
+      FocusScope.of(context).unfocus();
+    }
     setState(fn);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) FocusScope.of(context).unfocus();
-    });
   }
 
   Future<void> _handleBackPress() async {
@@ -400,37 +701,39 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Unsaved changes'),
-        content: const Text(
-          'You have unsaved changes. Do you want to save before leaving?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'cancel'),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'discard'),
-            child: const Text(
-              'Discard',
-              style: TextStyle(color: Colors.red),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.unsavedChanges),
+          content: Text(l10n.unsavedChangesBackDesc),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'cancel'),
+              child: Text(l10n.cancel),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'save'),
-            child: const Text(
-              'Save',
-              style: TextStyle(color: Color(0xFF673AB7)),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'discard'),
+              child: Text(
+                l10n.discard,
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'save'),
+              child: Text(
+                l10n.save,
+                style: const TextStyle(color: Color(0xFF673AB7)),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (!mounted) return;
 
     if (result == 'discard') {
+      _revertDocumentTitleEditing();
       Navigator.of(context).pop();
     } else if (result == 'save') {
       await _saveForm();
@@ -446,9 +749,18 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   int _previousTabIndex = 0;
 
   Future<void> _handleTabChange() async {
+    final wasEditingDocumentTitle = _documentTitleFocusNode.hasFocus;
+    _dismissDocumentTitleKeyboard();
+
     if (_tabController.indexIsChanging) {
       if (mounted) _safeSetState(() {});
       return;
+    }
+
+    if (wasEditingDocumentTitle ||
+        _documentTitleController.text.trim() != _documentTitle) {
+      await _finalizeDocumentTitleEditing();
+      if (!mounted) return;
     }
 
     final currentIndex = _tabController.index;
@@ -457,33 +769,34 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     if (currentIndex == 1 && _isDirty) {
       final result = await showDialog<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Unsaved changes'),
-          content: const Text(
-            'Save your form to see the latest preview of your changes.',
-          ),
-          actionsAlignment: MainAxisAlignment.end,
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'cancel'),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'continue'),
-              child: const Text(
-                'Don\'t save',
-                style: TextStyle(color: Color(0xFF5F6368)),
+        builder: (ctx) {
+          final l10n = AppLocalizations.of(ctx);
+          return AlertDialog(
+            title: Text(l10n.unsavedChanges),
+            content: Text(l10n.unsavedChangesPreviewDesc),
+            actionsAlignment: MainAxisAlignment.end,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'cancel'),
+                child: Text(l10n.cancel),
               ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'save'),
-              child: const Text(
-                'Save',
-                style: TextStyle(color: Color(0xFF673AB7)),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'continue'),
+                child: Text(
+                  l10n.dontSave,
+                  style: const TextStyle(color: Color(0xFF5F6368)),
+                ),
               ),
-            ),
-          ],
-        ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'save'),
+                child: Text(
+                  l10n.save,
+                  style: const TextStyle(color: Color(0xFF673AB7)),
+                ),
+              ),
+            ],
+          );
+        },
       );
 
       if (!mounted) return;
@@ -565,7 +878,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     });
     // Scroll to the newly added question
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _questionKeys.isEmpty || !_scrollController.hasClients) return;
+      if (!mounted || _questionKeys.isEmpty || !_scrollController.hasClients)
+        return;
       // Ensure keyboard stays dismissed after the new question card is built
       FocusScope.of(context).unfocus();
       final key = _questionKeys.last;
@@ -605,6 +919,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
         return Container(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(ctx).size.height * 0.7,
@@ -631,10 +946,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Add question',
+                    l10n.addQuestion,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -654,71 +969,61 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   children: [
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.radio_button_checked,
-                      label: 'Multiple\nchoice',
+                      icon: Symbols.radio_button_checked,
                       color: const Color(0xFF7B1FA2),
                       type: QuestionType.multipleChoice,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.check_box,
-                      label: 'Checkboxes',
+                      icon: Symbols.check_box,
                       color: const Color(0xFF1565C0),
                       type: QuestionType.checkbox,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.arrow_drop_down_circle,
-                      label: 'Dropdown',
+                      icon: Symbols.arrow_drop_down_circle,
                       color: const Color(0xFFAD1457),
                       type: QuestionType.dropdown,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.linear_scale,
-                      label: 'Linear\nscale',
+                      icon: Symbols.linear_scale,
                       color: const Color(0xFF00695C),
                       type: QuestionType.linearScale,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.grid_on,
-                      label: 'Multiple\nchoice grid',
+                      icon: Symbols.grid_on,
                       color: const Color(0xFF4527A0),
                       type: QuestionType.multipleChoiceGrid,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.checklist_rtl,
-                      label: 'Checkbox\ngrid',
+                      icon: Symbols.checklist_rtl,
                       color: const Color(0xFF1B5E20),
                       type: QuestionType.checkboxGrid,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.short_text,
-                      label: 'Short\nanswer',
+                      icon: Symbols.short_text,
                       color: const Color(0xFF2E7D32),
                       type: QuestionType.shortAnswer,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.notes,
-                      label: 'Paragraph',
+                      icon: Symbols.notes,
                       color: const Color(0xFFE65100),
                       type: QuestionType.paragraph,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.calendar_today,
-                      label: 'Date',
+                      icon: Symbols.calendar_today,
                       color: const Color(0xFF0277BD),
                       type: QuestionType.date,
                     ),
                     _buildQuestionTypeBlock(
                       ctx,
-                      icon: Icons.access_time,
-                      label: 'Time',
+                      icon: Symbols.access_time,
                       color: const Color(0xFFBF360C),
                       type: QuestionType.time,
                     ),
@@ -735,7 +1040,6 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   Widget _buildQuestionTypeBlock(
     BuildContext ctx, {
     required IconData icon,
-    required String label,
     required Color color,
     required QuestionType type,
     bool enabled = true,
@@ -759,14 +1063,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            _buildMaterialSymbolIcon(
               icon,
-              color: color.withValues(alpha: enabled ? 1.0 : 0.4),
               size: 28,
+              color: color.withValues(alpha: enabled ? 1.0 : 0.4),
             ),
             const SizedBox(height: 6),
             Text(
-              label,
+              AppStrings.questionTypeLabel(ctx, type),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
@@ -809,17 +1113,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       _scaleLowLabelControllers.removeAt(index);
       _scaleHighLabelControllers[index]?.dispose();
       _scaleHighLabelControllers.removeAt(index);
-      // Rebuild section description controllers map with shifted indices
-      final oldSectionDesc = Map<int, TextEditingController>.from(_sectionDescriptionControllers);
-      _sectionDescriptionControllers.clear();
-      _sectionDescriptionControllers[index]?.dispose();
-      for (final entry in oldSectionDesc.entries) {
-        if (entry.key < index) {
-          _sectionDescriptionControllers[entry.key] = entry.value;
-        } else if (entry.key > index) {
-          _sectionDescriptionControllers[entry.key - 1] = entry.value;
-        }
-      }
+      _remapIndexKeyedControllersOnDelete(_sectionDescriptionControllers, index);
+      _remapIndexKeyedControllersOnDelete(
+        _questionDescriptionControllers,
+        index,
+      );
     });
 
     // Scroll so the target question's top edge aligns with the tab bar.
@@ -891,28 +1189,21 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             ? TextEditingController(text: dup.scaleHighLabel)
             : null,
       );
-      // Rebuild section description controllers map with shifted indices
+      _remapIndexKeyedControllersOnInsert(_sectionDescriptionControllers, index + 1);
+      _remapIndexKeyedControllersOnInsert(
+        _questionDescriptionControllers,
+        index + 1,
+      );
       if (dup.type == QuestionType.section && dup.description != null) {
-        final oldSectionDesc = Map<int, TextEditingController>.from(_sectionDescriptionControllers);
-        _sectionDescriptionControllers.clear();
-        for (final entry in oldSectionDesc.entries) {
-          if (entry.key <= index) {
-            _sectionDescriptionControllers[entry.key] = entry.value;
-          } else {
-            _sectionDescriptionControllers[entry.key + 1] = entry.value;
-          }
-        }
-        _sectionDescriptionControllers[index + 1] = TextEditingController(text: dup.description ?? '');
-      } else {
-        final oldSectionDesc = Map<int, TextEditingController>.from(_sectionDescriptionControllers);
-        _sectionDescriptionControllers.clear();
-        for (final entry in oldSectionDesc.entries) {
-          if (entry.key <= index) {
-            _sectionDescriptionControllers[entry.key] = entry.value;
-          } else {
-            _sectionDescriptionControllers[entry.key + 1] = entry.value;
-          }
-        }
+        _sectionDescriptionControllers[index + 1] = TextEditingController(
+          text: dup.description ?? '',
+        );
+      } else if (dup.type != QuestionType.section &&
+          dup.description != null &&
+          dup.description!.isNotEmpty) {
+        _questionDescriptionControllers[index + 1] = TextEditingController(
+          text: dup.description ?? '',
+        );
       }
     });
 
@@ -948,27 +1239,16 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     moveItem(_gridColControllers);
     moveItem(_scaleLowLabelControllers);
     moveItem(_scaleHighLabelControllers);
-    _remapSectionDescriptionControllersOnMove(oldIndex, newIndex);
-  }
-
-  void _remapSectionDescriptionControllersOnMove(int oldIndex, int newIndex) {
-    final oldMap =
-        Map<int, TextEditingController>.from(_sectionDescriptionControllers);
-    _sectionDescriptionControllers.clear();
-
-    int newKeyFor(int oldKey) {
-      if (oldKey == oldIndex) return newIndex;
-      if (oldIndex < newIndex) {
-        if (oldKey > oldIndex && oldKey <= newIndex) return oldKey - 1;
-      } else if (oldIndex > newIndex) {
-        if (oldKey >= newIndex && oldKey < oldIndex) return oldKey + 1;
-      }
-      return oldKey;
-    }
-
-    for (final entry in oldMap.entries) {
-      _sectionDescriptionControllers[newKeyFor(entry.key)] = entry.value;
-    }
+    _remapIndexKeyedControllersOnMove(
+      _sectionDescriptionControllers,
+      oldIndex,
+      newIndex,
+    );
+    _remapIndexKeyedControllersOnMove(
+      _questionDescriptionControllers,
+      oldIndex,
+      newIndex,
+    );
   }
 
   void _reorderQuestions(int oldIndex, int newIndex) {
@@ -1131,24 +1411,19 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     return SizedBox(
       height: _kReorderCollapsedCardHeight,
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFDADCE0), width: 1),
-        ),
+        decoration: _kCardDecoration,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            Icon(
+            _buildMaterialSymbolIcon(
               _questionTypeIcon(question.type),
               color: const Color(0xFF673AB7),
-              size: 20,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 question.questionText.isEmpty
-                    ? 'Untitled Question'
+                    ? AppLocalizations.of(context).untitledQuestion
                     : question.questionText,
                 style: const TextStyle(
                   fontSize: 14,
@@ -1160,7 +1435,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               ),
             ),
             const Icon(
-              Icons.drag_indicator,
+              Symbols.drag_indicator,
               color: Color(0xFF9AA0A6),
               size: 20,
             ),
@@ -1178,7 +1453,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       child: _OneSecondReorderDragStartListener(
         index: index,
         child: Semantics(
-          label: 'Drag to reorder question',
+          label: AppLocalizations.of(context).tooltipDragToReorder,
           button: true,
           child: MouseRegion(
             cursor: SystemMouseCursors.grab,
@@ -1189,7 +1464,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 color: Colors.transparent,
                 child: Center(
                   child: Icon(
-                    Icons.drag_indicator,
+                    Symbols.drag_indicator,
                     color: const Color(0xFF9AA0A6),
                     size: 20,
                   ),
@@ -1324,86 +1599,64 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     });
   }
 
-  PopupMenuItem<QuestionType> _questionTypePopupItem(QuestionType type) {
+  Widget _buildMaterialSymbolIcon(
+    IconData icon, {
+    double size = 20,
+    Color color = const Color(0xFF5F6368),
+  }) {
+    return AppIcons.icon(icon, size: size, color: color);
+  }
+
+  PopupMenuItem<QuestionType> _questionTypePopupItem(
+    BuildContext context,
+    QuestionType type,
+  ) {
     return PopupMenuItem(
       value: type,
       child: Row(
         children: [
-          Icon(
-            _questionTypeIcon(type),
-            size: 20,
-            color: const Color(0xFF5F6368),
-          ),
+          _buildMaterialSymbolIcon(_questionTypeIcon(type)),
           const SizedBox(width: 8),
-          Text(_questionTypeLabel(type)),
+          Text(_questionTypeLabel(context, type)),
         ],
       ),
     );
   }
 
-  String _questionTypeLabel(QuestionType type) {
-    switch (type) {
-      case QuestionType.multipleChoice:
-        return 'Multiple choice';
-      case QuestionType.checkbox:
-        return 'Checkboxes';
-      case QuestionType.shortAnswer:
-        return 'Short answer';
-      case QuestionType.paragraph:
-        return 'Paragraph';
-      case QuestionType.dropdown:
-        return 'Dropdown';
-      case QuestionType.image:
-        return 'Image';
-      case QuestionType.video:
-        return 'Video';
-      case QuestionType.linearScale:
-        return 'Linear scale';
-      case QuestionType.multipleChoiceGrid:
-        return 'Multiple choice grid';
-      case QuestionType.checkboxGrid:
-        return 'Checkbox grid';
-      case QuestionType.date:
-        return 'Date';
-      case QuestionType.time:
-        return 'Time';
-      case QuestionType.info:
-        return 'Info';
-      case QuestionType.section:
-        return 'Section';
-    }
+  String _questionTypeLabel(BuildContext context, QuestionType type) {
+    return AppStrings.questionTypeLabel(context, type);
   }
 
   IconData _questionTypeIcon(QuestionType type) {
     switch (type) {
       case QuestionType.multipleChoice:
-        return Icons.radio_button_checked;
+        return Symbols.radio_button_checked;
       case QuestionType.checkbox:
-        return Icons.check_box;
+        return Symbols.check_box;
       case QuestionType.shortAnswer:
-        return Icons.short_text;
+        return Symbols.short_text;
       case QuestionType.paragraph:
-        return Icons.notes;
+        return Symbols.notes;
       case QuestionType.dropdown:
-        return Icons.arrow_drop_down_circle;
+        return Symbols.arrow_drop_down_circle;
       case QuestionType.image:
-        return Icons.image;
+        return Symbols.image;
       case QuestionType.video:
-        return Icons.videocam;
+        return Symbols.smart_display;
       case QuestionType.linearScale:
-        return Icons.linear_scale;
+        return Symbols.linear_scale;
       case QuestionType.multipleChoiceGrid:
-        return Icons.grid_on;
+        return Symbols.grid_on;
       case QuestionType.checkboxGrid:
-        return Icons.checklist_rtl;
+        return Symbols.checklist_rtl;
       case QuestionType.date:
-        return Icons.calendar_today;
+        return Symbols.calendar_today;
       case QuestionType.time:
-        return Icons.access_time;
+        return Symbols.access_time;
       case QuestionType.info:
-        return Icons.title;
+        return Symbols.text_fields;
       case QuestionType.section:
-        return Icons.view_week;
+        return Symbols.splitscreen;
     }
   }
 
@@ -1450,13 +1703,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 200),
               child: url.startsWith('http')
-                ? Image.network(
-                    url,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (ctx, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
+                  ? SafeImageLoader(
+                      url: url,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loading: Container(
                         height: 100,
                         color: const Color(0xFFF5F5F5),
                         child: const Center(
@@ -1465,44 +1716,49 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                             strokeWidth: 2,
                           ),
                         ),
-                      );
-                    },
-                    errorBuilder: (ctx, error, _) {
-                      return Container(
+                      ),
+                      fallback: Container(
                         height: 100,
                         color: const Color(0xFFF5F5F5),
                         child: const Center(
-                          child: Icon(Icons.broken_image, color: Color(0xFFBDBDBD), size: 40),
+                          child: Icon(
+                            Symbols.broken_image,
+                            color: Color(0xFFBDBDBD),
+                            size: 40,
+                          ),
                         ),
-                      );
-                    },
-                  )
-                : Image.file(
-                    File(url),
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, error, _) {
-                      return Container(
-                        height: 100,
-                        color: const Color(0xFFF5F5F5),
-                        child: const Center(
-                          child: Icon(Icons.broken_image, color: Color(0xFFBDBDBD), size: 40),
-                        ),
-                      );
-                    },
-                  ),
+                      ),
+                    )
+                  : Image.file(
+                      File(url),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, error, _) {
+                        return Container(
+                          height: 100,
+                          color: const Color(0xFFF5F5F5),
+                          child: const Center(
+                            child: Icon(
+                              Symbols.broken_image,
+                              color: Color(0xFFBDBDBD),
+                              size: 40,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ),
           Positioned(
             top: 4,
             right: 4,
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(16),
+              decoration: const BoxDecoration(
+                color: _kOverlayBlack60,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
               ),
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                icon: const Icon(Symbols.close, color: Colors.white, size: 16),
                 onPressed: () {
                   _markDirty();
                   _safeSetState(() {
@@ -1527,6 +1783,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext);
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
@@ -1553,8 +1810,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Text(
-                  'Add YouTube video',
+                Text(
+                  l10n.addYouTubeVideo,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -1564,8 +1821,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 const SizedBox(height: 16),
                 TextField(
                   controller: controller,
-                  decoration: const InputDecoration(
-                    hintText: 'Paste YouTube URL here',
+                  decoration: InputDecoration(
+                    hintText: l10n.pasteYouTubeUrl,
                     hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
                     border: OutlineInputBorder(),
                   ),
@@ -1578,7 +1835,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(sheetContext),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.cancel),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -1599,7 +1856,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Add'),
+                      child: Text(l10n.add),
                     ),
                   ],
                 ),
@@ -1644,14 +1901,26 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       if (_questions[i].type == QuestionType.section) {
         final descCtrl = _sectionDescriptionControllers[i];
         if (descCtrl != null) {
-          _questions[i].description = descCtrl.text.isNotEmpty ? descCtrl.text : null;
+          _questions[i].description = descCtrl.text.isNotEmpty
+              ? descCtrl.text
+              : null;
         }
       }
     }
   }
 
   Future<void> _saveForm() async {
+    await _finalizeDocumentTitleEditing();
+    if (!mounted) return;
     if (_isSaving) return;
+
+    final l10n = AppLocalizations.of(context);
+    final pendingDocumentTitle = _normalizedDocumentTitle(l10n);
+
+    if (_currentFormId != null && _originalForm != null) {
+      final renamed = await _applyDocumentTitleOnSave();
+      if (!renamed || !mounted) return;
+    }
 
     _syncAllFields();
 
@@ -1669,8 +1938,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     if (validCount == 0) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add at least one question before saving.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).addAtLeastOneQuestion),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 3),
         ),
@@ -1687,9 +1956,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       if (unique.length < nonEmpty.length) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              "You can't have duplicated choices in a multiple choice question.",
+              AppLocalizations.of(context).duplicateChoicesError,
             ),
             backgroundColor: Colors.orange,
             duration: Duration(seconds: 3),
@@ -1702,8 +1971,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     // Build the updated form model from current editor state
     final updatedForm = FormModel(
       title: _titleController.text.isEmpty
-          ? 'Untitled form'
+          ? AppLocalizations.of(context).untitledForm
           : _titleController.text,
+      documentTitle: pendingDocumentTitle,
       description: _descriptionController.text,
       questions: _questions,
       collectEmail: _collectEmail,
@@ -1722,32 +1992,37 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       await _saveNewForm(updatedForm);
     } else {
       // EXISTING FORM: detect changes using cached original data (no API call)
-      final changes = _formsService.detectFormChanges(_originalForm!, updatedForm);
+      final changes = _formsService.detectFormChanges(
+        _originalForm!,
+        updatedForm,
+      );
 
       // If there are breaking changes, show a warning dialog BEFORE the saving overlay
       if (changes.hasBreakingChanges) {
         final shouldContinue = await showDialog<String>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Save changes?'),
-            content: Text(
-              'This change will affect existing responses: ${changes.breakingChangesDescription}.\n\n'
-              'Do you want to continue?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, 'cancel'),
-                child: const Text('Cancel'),
+          builder: (ctx) {
+            final l10n = AppLocalizations.of(ctx);
+            return AlertDialog(
+              title: Text(l10n.saveChangesTitle),
+              content: Text(
+                l10n.breakingChangesDesc(changes.breakingChangesDescription),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, 'continue'),
-                child: const Text(
-                  'Continue',
-                  style: TextStyle(color: Color(0xFF673AB7)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, 'cancel'),
+                  child: Text(l10n.cancel),
                 ),
-              ),
-            ],
-          ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, 'continue'),
+                  child: Text(
+                    l10n.continueAction,
+                    style: const TextStyle(color: Color(0xFF673AB7)),
+                  ),
+                ),
+              ],
+            );
+          },
         );
         if (shouldContinue != 'continue') return;
       }
@@ -1782,12 +2057,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(
-                    color: Color(0xFF673AB7),
-                  ),
+                  const CircularProgressIndicator(color: Color(0xFF673AB7)),
                   const SizedBox(height: 16),
                   Text(
-                    'Saving...',
+                    AppLocalizations.of(context).saving,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
@@ -1818,7 +2091,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       final savedForm = fetchedForm ?? createdForm;
       _originalForm = savedForm;
       if (mounted) {
-        _safeSetState(() => _syncQuestionsOrderFromSavedForm(savedForm));
+        _safeSetState(() {
+          _syncQuestionsOrderFromSavedForm(savedForm);
+          final docTitle = form.documentTitle?.trim().isNotEmpty == true
+              ? form.documentTitle!.trim()
+              : savedForm.title.trim();
+          _documentTitle = docTitle;
+          _documentTitleController.text = docTitle;
+        });
       }
       await _applySettingsAndFinish(
         savedForm.formId,
@@ -1836,11 +2116,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_friendlyError(error)),
+            content: Text(_friendlyError(context, error)),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'Done',
+              label: AppLocalizations.of(context).done,
               textColor: Colors.white,
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -1853,7 +2133,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         _safeSetState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_friendlyError(error ?? 'Failed to save form.')),
+            content: Text(_friendlyError(context, error ?? AppLocalizations.of(context).failedToSaveForm)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -1873,8 +2153,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         Navigator.of(context).pop(); // Close saving overlay
         _safeSetState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to load current form data. Please try again.'),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).failedToLoadCurrentForm,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -1895,7 +2177,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     if (savedForm != null) {
       _originalForm = savedForm;
-      _safeSetState(() => _syncQuestionsOrderFromSavedForm(savedForm));
+      _safeSetState(() {
+        _syncQuestionsOrderFromSavedForm(savedForm);
+        final docTitle = updatedForm.documentTitle?.trim().isNotEmpty == true
+            ? updatedForm.documentTitle!.trim()
+            : _documentTitle;
+        _documentTitle = docTitle;
+        _documentTitleController.text = docTitle;
+      });
       await _applySettingsAndFinish(
         _currentFormId!,
         savedForm.responderUri ?? _responderUri,
@@ -1907,7 +2196,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         _safeSetState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_friendlyError(error ?? 'Failed to update form.')),
+            content: Text(_friendlyError(context, error ?? AppLocalizations.of(context).failedToUpdateForm)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -1918,7 +2207,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   /// Apply form settings (email, Apps Script) and finish the save flow.
   Future<void> _applySettingsAndFinish(
-      String formId, String? responderUri, String? nonFatalError) async {
+    String formId,
+    String? responderUri,
+    String? nonFatalError,
+  ) async {
     String? settingsError;
 
     // Email collection type - use REST API
@@ -1971,15 +2263,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           warnings.add('Settings: $settingsError');
         }
 
+        final l10n = AppLocalizations.of(context);
         final snackBarMsg = warnings.isEmpty
-            ? 'Form saved! Link copied to clipboard.'
-            : 'Form saved! Link copied. ${warnings.join(' ')}';
+            ? l10n.formSaved
+            : l10n.formSavedWithWarnings(warnings.join(' '));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(snackBarMsg),
-            backgroundColor: warnings.isNotEmpty
-                ? Colors.orange
-                : Colors.green,
+            backgroundColor: warnings.isNotEmpty ? Colors.orange : Colors.green,
             duration: Duration(seconds: warnings.isNotEmpty ? 5 : 2),
           ),
         );
@@ -2011,21 +2302,144 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
   }
 
-  String _friendlyError(String error) {
+  String _friendlyError(BuildContext context, String error) {
+    final l10n = AppLocalizations.of(context);
     if (error.contains('duplicate values')) {
-      return "You can't have duplicated choices in a multiple choice question.";
+      return l10n.duplicateChoicesError;
     }
     if (error.contains('INVALID_ARGUMENT')) {
-      return 'Invalid data. Please check your form and try again.';
+      return l10n.invalidDataError;
     }
     if (error.contains('PERMISSION_DENIED')) {
-      return 'Permission denied. Please check your Google account access.';
+      return l10n.permissionDeniedError;
+    }
+    if (error == l10n.failedToSaveForm ||
+        error.contains('Failed to save form')) {
+      return l10n.failedToSaveForm;
+    }
+    if (error == l10n.failedToUpdateForm ||
+        error.contains('Failed to update form')) {
+      return l10n.failedToUpdateForm;
     }
     return error.length > 100 ? '${error.substring(0, 100)}...' : error;
   }
 
+  Widget _buildTemplatePreviewScaffold(AppLocalizations l10n) {
+    final appBarTitle = widget.templateDisplayName?.isNotEmpty == true
+        ? widget.templateDisplayName!
+        : (_titleController.text.isEmpty
+            ? l10n.untitledForm
+            : _titleController.text);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0EBF4),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF673AB7),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Symbols.arrow_back, color: Colors.white),
+          onPressed: _isUsingTemplate ? null : () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          appBarTitle,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: IgnorePointer(
+            child: Container(
+              color: const Color(0xFF673AB7),
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+                padding: EdgeInsets.zero,
+                labelPadding: EdgeInsets.zero,
+                tabs: [
+                  SizedBox(width: 96, child: Tab(text: l10n.tabEdit)),
+                  SizedBox(width: 96, child: Tab(text: l10n.tabPreview)),
+                  SizedBox(width: 96, child: Tab(text: l10n.tabResponses)),
+                  SizedBox(width: 96, child: Tab(text: l10n.tabSettings)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: _buildEditTab(),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton(
+              onPressed: _isUsingTemplate ? null : _useTemplate,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF673AB7),
+                disabledBackgroundColor:
+                    const Color(0xFF673AB7).withValues(alpha: 0.6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: _isUsingTemplate
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      l10n.useThisTemplate,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (_isReadOnly) {
+      return _buildTemplatePreviewScaffold(l10n);
+    }
     return PopScope(
       canPop: !_isDirty,
       onPopInvokedWithResult: (didPop, result) {
@@ -2036,253 +2450,283 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       child: Scaffold(
         backgroundColor: const Color(0xFFF0EBF4),
         appBar: AppBar(
-        backgroundColor: const Color(0xFF673AB7),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: _handleBackPress,
-        ),
-        title: Text(
-          _titleController.text.isEmpty
-              ? 'Untitled form'
-              : _titleController.text,
-          style: TextStyle(
-            color: _titleController.text.isEmpty
-                ? Colors.white70
-                : Colors.white,
-            fontSize: 18,
-            fontStyle: _titleController.text.isEmpty
-                ? FontStyle.italic
-                : FontStyle.normal,
+          backgroundColor: const Color(0xFF673AB7),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Symbols.arrow_back, color: Colors.white),
+            onPressed: _handleBackPress,
           ),
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          // Copy link button
-          IconButton(
-            onPressed: () {
-              if (_responderUri != null && _responderUri!.isNotEmpty) {
-                Clipboard.setData(ClipboardData(text: _responderUri!));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Link copied to clipboard'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Save the form first to get a link'),
-                    backgroundColor: Colors.orange,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.link, color: Colors.white, size: 20),
-            tooltip: 'Copy Link',
-          ),
-          // Publish button
-          IconButton(
-            onPressed: _isPublishing ? null : _togglePublish,
-            icon: _isPublishing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+          title: _buildAppBarDocumentTitleField(l10n),
+          actions: [
+            // Copy link button
+            IconButton(
+              onPressed: () {
+                if (_responderUri != null && _responderUri!.isNotEmpty) {
+                  Clipboard.setData(ClipboardData(text: _responderUri!));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.linkCopiedToClipboard),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
                     ),
-                  )
-                : _isPublished
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Icon(Icons.send, color: Colors.white, size: 16),
-                            Positioned(
-                              right: -4,
-                              bottom: -4,
-                              child: Container(
-                                padding: const EdgeInsets.all(1),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF673AB7),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green[300],
-                                  size: 10,
-                                ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l10n.saveTheFormFirst),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Symbols.link, color: Colors.white, size: 20),
+              tooltip: l10n.tooltipCopyLink,
+            ),
+            // Publish button
+            IconButton(
+              onPressed: _isPublishing ? null : _togglePublish,
+              icon: _isPublishing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : _isPublished
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Symbols.send,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          Positioned(
+                            right: -4,
+                            bottom: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(1),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF673AB7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Symbols.check_circle,
+                                color: Colors.green[300],
+                                size: 10,
                               ),
                             ),
-                          ],
-                        ),
-                      )
-                    : const Icon(Icons.send_outlined, color: Colors.white, size: 20),
-            tooltip: _isPublished ? 'Published' : 'Publish',
-          ),
-          // Save button
-          IconButton(
-            onPressed: _isSaving ? null : _saveForm,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Icon(Icons.save, color: Colors.white, size: 20),
-            tooltip: 'Save',
-          ),
-          const SizedBox(width: 4),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            color: const Color(0xFF673AB7),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3,
-              indicatorSize: TabBarIndicatorSize.label,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              labelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-              ),
-              padding: EdgeInsets.zero,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 20),
-              tabs: const [
-                Tab(text: 'Edit'),
-                Tab(text: 'Preview'),
-                Tab(text: 'Responses'),
-                Tab(text: 'Settings'),
-              ],
+                          ),
+                        ],
+                      ),
+                    )
+                  : const Icon(Symbols.send, color: Colors.white, size: 20),
+              tooltip: _isPublished ? l10n.tooltipPublished : l10n.tooltipPublish,
             ),
-          ),
-        ),
-      ),
-      body: _isLoading
-          ? _buildEditTabSkeleton()
-          : TabBarView(
-              controller: _tabController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildEditTab(),
-                _buildPreviewTab(),
-                _buildResponseTab(),
-                _buildSettingsTab(),
-              ],
+            // Save button
+            IconButton(
+              onPressed: _isSaving ? null : _saveForm,
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Symbols.save, color: Colors.white, size: 20),
+              tooltip: l10n.tooltipSave,
             ),
-      bottomNavigationBar: _isLoading
-          ? null
-          : _tabController.index == 2 && _currentFormId != null
-          ? _buildResponseBottomBar()
-          : _tabController.index == 3
-          ? null
-          : _tabController.index != 0
-          ? null
-          : Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, -2),
+            const SizedBox(width: 4),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: Container(
+              color: const Color(0xFF673AB7),
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+                padding: EdgeInsets.zero,
+                labelPadding: EdgeInsets.zero,
+                tabs: [
+                  SizedBox(
+                    width: 96,
+                    child: Tab(text: l10n.tabEdit),
+                  ),
+                  SizedBox(
+                    width: 96,
+                    child: Tab(text: l10n.tabPreview),
+                  ),
+                  SizedBox(
+                    width: 96,
+                    child: Tab(text: l10n.tabResponses),
+                  ),
+                  SizedBox(
+                    width: 96,
+                    child: Tab(text: l10n.tabSettings),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: SafeArea(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      onPressed: _showAddQuestionDialog,
-                      icon: const Icon(
-                        Icons.add_circle_outline,
-                        color: Color(0xFF673AB7),
-                        size: 28,
-                      ),
-                      tooltip: 'Add question',
-                    ),
-                    IconButton(
-                      onPressed: () => _addQuestion(QuestionType.image),
-                      icon: const Icon(
-                        Icons.image_outlined,
-                        color: Color(0xFF5F6368),
-                        size: 28,
-                      ),
-                      tooltip: 'Add image',
-                    ),
-                    IconButton(
-                      onPressed: () => _addQuestion(QuestionType.video),
-                      icon: const Icon(
-                        Icons.videocam_outlined,
-                        color: Color(0xFF5F6368),
-                        size: 28,
-                      ),
-                      tooltip: 'Add video',
-                    ),
-                    IconButton(
-                      onPressed: () => _addQuestion(QuestionType.info),
-                      icon: const Icon(
-                        Icons.title,
-                        color: Color(0xFF5F6368),
-                        size: 28,
-                      ),
-                      tooltip: 'Add info',
-                    ),
-                    IconButton(
-                      onPressed: () => _addQuestion(QuestionType.section),
-                      icon: const Icon(
-                        Icons.view_week_outlined,
-                        color: Color(0xFF5F6368),
-                        size: 28,
-                      ),
-                      tooltip: 'Add section',
+            ),
+          ),
+        ),
+        body: _isLoading
+            ? _buildEditTabSkeleton()
+            : IndexedStack(
+                index: _tabController.index,
+                children: [
+                  _buildEditTab(),
+                  _buildPreviewTab(),
+                  _buildResponseTab(),
+                  _buildSettingsTab(),
+                ],
+              ),
+        bottomNavigationBar: _isLoading
+            ? null
+            : _tabController.index == 2 && _currentFormId != null
+            ? _buildResponseBottomBar()
+            : _tabController.index == 3
+            ? null
+            : _tabController.index != 0
+            ? null
+            : Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, -2),
                     ),
                   ],
                 ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: SafeArea(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        onPressed: _showAddQuestionDialog,
+                        icon: AppIcons.icon(
+                          Symbols.add_circle_outline,
+                          color: const Color(0xFF673AB7),
+                          size: 28,
+                        ),
+                        tooltip: l10n.addQuestion,
+                      ),
+                      IconButton(
+                        onPressed: () => _addQuestion(QuestionType.image),
+                        icon: AppIcons.icon(
+                          Symbols.image,
+                          color: const Color(0xFF5F6368),
+                          size: 28,
+                        ),
+                        tooltip: l10n.addImage,
+                      ),
+                      IconButton(
+                        onPressed: () => _addQuestion(QuestionType.video),
+                        icon: AppIcons.icon(
+                          Symbols.smart_display,
+                          color: const Color(0xFF5F6368),
+                          size: 28,
+                        ),
+                        tooltip: l10n.addVideo,
+                      ),
+                      IconButton(
+                        onPressed: () => _addQuestion(QuestionType.info),
+                        icon: AppIcons.icon(
+                          Symbols.text_fields,
+                          color: const Color(0xFF5F6368),
+                          size: 28,
+                        ),
+                        tooltip: l10n.addInfo,
+                      ),
+                      IconButton(
+                        onPressed: () => _addQuestion(QuestionType.section),
+                        icon: AppIcons.icon(
+                          Symbols.splitscreen,
+                          color: const Color(0xFF5F6368),
+                          size: 28,
+                        ),
+                        tooltip: l10n.addSection,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-    ),
+      ),
     );
   }
 
   // ==================== EDIT TAB ====================
   Widget _buildEditTab() {
-    final roboTheme = Theme.of(context).copyWith(
-      textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Roboto'),
-    );
-    return Theme(
-      data: roboTheme,
-      child: DefaultTextStyle(
-        style: TextStyle(fontFamily: 'Roboto', color: Color(0xFF202124)),
-        child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: _buildFormInfoCard(),
-                  ),
+    return DefaultTextStyle(
+      style: const TextStyle(color: Color(0xFF202124)),
+      child: CustomScrollView(
+        controller: _scrollController,
+        scrollCacheExtent: ScrollCacheExtent.pixels(120),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _isReadOnly
+                  ? IgnorePointer(child: _buildFormInfoCard())
+                  : _buildFormInfoCard(),
+            ),
+          ),
+          if (_isReadOnly)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final question = _questions[index];
+                    final isSection = question.type == QuestionType.section;
+                    final card = isSection
+                        ? _buildSectionCard(index)
+                        : _buildQuestionCard(index);
+
+                    return IgnorePointer(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          bottom: isSection ? 12 : _kReorderItemBottomPadding,
+                        ),
+                        child: _KeepAliveChild(
+                          child: RepaintBoundary(child: card),
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: _questions.length,
                 ),
-                SliverPadding(
+              ),
+            )
+          else ...[
+            SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               sliver: SliverReorderableList(
                 itemCount: _questions.length,
@@ -2291,8 +2735,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 onReorderEnd: (_) => _onReorderDragEnd(),
                 onReorderItem: (oldIndex, newIndex) {
                   if (oldIndex >= _questions.length) return;
-                  final clampedNew =
-                      newIndex.clamp(0, _questions.length - 1);
+                  final clampedNew = newIndex.clamp(0, _questions.length - 1);
                   _reorderQuestions(oldIndex, clampedNew);
                 },
                 proxyDecorator: (child, index, animation) {
@@ -2309,7 +2752,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: const Color(0xFF673AB7).withValues(alpha: 0.3 * t),
+                              color: const Color(
+                                0xFF673AB7,
+                              ).withValues(alpha: 0.3 * t),
                               width: 1,
                             ),
                           ),
@@ -2323,52 +2768,65 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   final question = _questions[index];
                   final isSection = question.type == QuestionType.section;
 
-                  // Section items are not reorderable
                   if (isSection) {
                     return Padding(
-                      key: _questionKeys.length > index ? _questionKeys[index] : ValueKey('section_$index'),
+                      key: _questionKeys.length > index
+                          ? _questionKeys[index]
+                          : ValueKey('section_$index'),
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildSectionCard(index),
+                      child: _KeepAliveChild(
+                        child: RepaintBoundary(
+                          child: _buildSectionCard(index),
+                        ),
+                      ),
                     );
                   }
 
-                  // Regular question cards with drag handle
                   return Padding(
-                    key: _questionKeys.length > index ? _questionKeys[index] : ValueKey('question_$index'),
-                    padding: const EdgeInsets.only(bottom: _kReorderItemBottomPadding),
-                    child: _collapsedForReorderIndex == index
-                        ? _buildReorderCollapsedCard(index)
-                        : _buildQuestionCard(index),
+                    key: _questionKeys.length > index
+                        ? _questionKeys[index]
+                        : ValueKey('question_$index'),
+                    padding: const EdgeInsets.only(
+                      bottom: _kReorderItemBottomPadding,
+                    ),
+                    child: _KeepAliveChild(
+                      child: RepaintBoundary(
+                        child: _collapsedForReorderIndex == index
+                            ? _buildReorderCollapsedCard(index)
+                            : _buildQuestionCard(index),
+                      ),
+                    ),
                   );
                 },
               ),
             ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                    child: Center(
-                      child: TextButton.icon(
-                        onPressed: _showAddQuestionDialog,
-                        icon: const Icon(Icons.add, color: Color(0xFF673AB7)),
-                        label: const Text(
-                          'Add question',
-                          style: TextStyle(
-                            color: Color(0xFF673AB7),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                child: Center(
+                  child: TextButton.icon(
+                    onPressed: _showAddQuestionDialog,
+                    icon: const Icon(Symbols.add, color: Color(0xFF673AB7)),
+                    label: Text(
+                      AppLocalizations.of(context).addQuestion,
+                      style: const TextStyle(
+                        color: Color(0xFF673AB7),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   // ==================== PREVIEW TAB ====================
   Widget _buildPreviewTab() {
+    final l10n = AppLocalizations.of(context);
     if (_responderUri == null || _responderUri!.isEmpty) {
       return Center(
         child: Padding(
@@ -2376,14 +2834,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.preview_outlined,
-                size: 64,
-                color: Color(0xFFDADCE0),
-              ),
+              const Icon(Symbols.preview, size: 64, color: Color(0xFFDADCE0)),
               const SizedBox(height: 16),
-              const Text(
-                'No preview available',
+              Text(
+                l10n.noPreviewAvailable,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w500,
@@ -2391,8 +2845,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Save your form first to see a live preview of how it looks to respondents.',
+              Text(
+                l10n.noPreviewDesc,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Color(0xFF80868B)),
               ),
@@ -2408,8 +2862,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           strokeWidth: 2,
                         ),
                       )
-                    : const Icon(Icons.save, size: 20),
-                label: Text(_isSaving ? 'Saving...' : 'Save to preview'),
+                    : const Icon(Symbols.save, size: 20),
+                label: Text(_isSaving ? l10n.saving : l10n.saveToPreview),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF673AB7),
                   foregroundColor: Colors.white,
@@ -2450,21 +2904,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   Widget _buildFormInfoCard() {
+    final l10n = AppLocalizations.of(context);
     final sectionCount = _getSectionCount();
     final showSectionLabel = sectionCount > 1;
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      decoration: _kFormInfoCardDecoration,
       child: Column(
         children: [
           if (showSectionLabel)
@@ -2473,7 +2918,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Section 1 of $sectionCount',
+                  l10n.sectionTitleOf(1, sectionCount),
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF5F6368),
@@ -2484,8 +2929,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             ),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
-              hintText: 'Form title',
+            decoration: InputDecoration(
+              hintText: l10n.formTitle,
               hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(20),
@@ -2500,8 +2945,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           const Divider(height: 1, indent: 20, endIndent: 20),
           TextField(
             controller: _descriptionController,
-            decoration: const InputDecoration(
-              hintText: 'Form description',
+            decoration: InputDecoration(
+              hintText: l10n.formDescription,
               hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(20),
@@ -2517,22 +2962,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== SECTION CARD ====================
   Widget _buildSectionCard(int index) {
+    final l10n = AppLocalizations.of(context);
     final question = _questions[index];
     final (sectionNum, totalSections) = _getSectionInfo(index);
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDADCE0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      decoration: _kCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2544,14 +2979,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.view_week,
+                _buildMaterialSymbolIcon(
+                  Symbols.splitscreen,
                   color: const Color(0xFF673AB7),
-                  size: 20,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Section $sectionNum of $totalSections',
+                  l10n.sectionTitleOf(sectionNum, totalSections),
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF673AB7),
@@ -2566,8 +3000,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: TextField(
               controller: _questionControllers[index],
-              decoration: const InputDecoration(
-                hintText: 'Section title',
+              decoration: InputDecoration(
+                hintText: l10n.sectionTitle,
                 hintStyle: TextStyle(color: Color(0xFF202124)),
                 border: UnderlineInputBorder(
                   borderSide: BorderSide(color: Color(0xFFDADCE0)),
@@ -2595,9 +3029,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   index,
                   () => TextEditingController(text: question.description ?? ''),
                 ),
-                decoration: const InputDecoration(
-                  hintText: 'Description',
-                  hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
+                decoration: InputDecoration(
+                  hintText: l10n.description,
+                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
                   border: InputBorder.none,
                 ),
                 style: const TextStyle(
@@ -2623,12 +3057,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               children: [
                 IconButton(
                   icon: const Icon(
-                    Icons.content_copy,
+                    Symbols.content_copy,
                     size: 20,
                     color: Color(0xFF5F6368),
                   ),
                   onPressed: () => _duplicateQuestion(index),
-                  tooltip: 'Duplicate',
+                  tooltip: l10n.duplicate,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
                     minWidth: 36,
@@ -2637,12 +3071,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 ),
                 IconButton(
                   icon: const Icon(
-                    Icons.delete_outline,
+                    Symbols.delete_outline,
                     size: 20,
                     color: Color(0xFF5F6368),
                   ),
                   onPressed: () => _removeQuestion(index),
-                  tooltip: 'Delete',
+                  tooltip: l10n.delete,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
                     minWidth: 36,
@@ -2651,7 +3085,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 ),
                 PopupMenuButton<String>(
                   icon: const Icon(
-                    Icons.more_vert,
+                    Symbols.more_vert,
                     size: 20,
                     color: Color(0xFF5F6368),
                   ),
@@ -2660,7 +3094,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     minWidth: 36,
                     minHeight: 36,
                   ),
-                  tooltip: 'More options',
+                  tooltip: l10n.tooltipMoreOptions,
                   onSelected: (value) {
                     if (value == 'showDescription') {
                       _markDirty();
@@ -2688,9 +3122,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Show description',
-                              style: TextStyle(fontSize: 14),
+                            Text(
+                              l10n.showDescription,
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
@@ -2708,6 +3142,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== QUESTION CARD ====================
   Widget _buildQuestionCard(int index) {
+    final l10n = AppLocalizations.of(context);
     final question = _questions[index];
 
     // Section type has its own dedicated UI
@@ -2725,18 +3160,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     final isInfoType = question.type == QuestionType.info;
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFDADCE0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      decoration: _kCardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2756,15 +3180,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        _buildMaterialSymbolIcon(
                           _questionTypeIcon(question.type),
                           color: const Color(0xFF673AB7),
-                          size: 20,
                         ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            _questionTypeLabel(question.type),
+                            _questionTypeLabel(context, question.type),
                             style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFF673AB7),
@@ -2773,58 +3196,65 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(
-                          Icons.arrow_drop_down,
-                          color: Color(0xFF673AB7),
-                          size: 20,
+                        _buildMaterialSymbolIcon(
+                          Symbols.arrow_drop_down,
+                          color: const Color(0xFF673AB7),
                         ),
                       ],
                     ),
                     itemBuilder: (context) => [
                       // Group 1: Text
-                      _questionTypePopupItem(QuestionType.shortAnswer),
-                      _questionTypePopupItem(QuestionType.paragraph),
+                      _questionTypePopupItem(context, QuestionType.shortAnswer),
+                      _questionTypePopupItem(context, QuestionType.paragraph),
                       const PopupMenuDivider(height: 1),
                       // Group 2: Choice
-                      _questionTypePopupItem(QuestionType.multipleChoice),
-                      _questionTypePopupItem(QuestionType.checkbox),
-                      _questionTypePopupItem(QuestionType.dropdown),
+                      _questionTypePopupItem(context, QuestionType.multipleChoice),
+                      _questionTypePopupItem(context, QuestionType.checkbox),
+                      _questionTypePopupItem(context, QuestionType.dropdown),
                       const PopupMenuDivider(height: 1),
                       // Group 3: Scale & Grid
-                      _questionTypePopupItem(QuestionType.linearScale),
-                      _questionTypePopupItem(QuestionType.multipleChoiceGrid),
-                      _questionTypePopupItem(QuestionType.checkboxGrid),
+                      _questionTypePopupItem(context, QuestionType.linearScale),
+                      _questionTypePopupItem(context, QuestionType.multipleChoiceGrid),
+                      _questionTypePopupItem(context, QuestionType.checkboxGrid),
                       const PopupMenuDivider(height: 1),
                       // Group 4: Date & Time
-                      _questionTypePopupItem(QuestionType.date),
-                      _questionTypePopupItem(QuestionType.time),
+                      _questionTypePopupItem(context, QuestionType.date),
+                      _questionTypePopupItem(context, QuestionType.time),
                     ],
-                   ),
-                 ),
+                  ),
+                ),
                 if (!isImageType && !isVideoType && !isInfoType)
                   IconButton(
                     icon: Icon(
                       _questions[index].embeddedImageUrl != null &&
                               _questions[index].embeddedImageUrl!.isNotEmpty
-                          ? Icons.image
-                          : Icons.add_photo_alternate_outlined,
+                          ? Symbols.image
+                          : Symbols.add_photo_alternate,
                       size: 20,
-                      color: _questions[index].embeddedImageUrl != null &&
+                      color:
+                          _questions[index].embeddedImageUrl != null &&
                               _questions[index].embeddedImageUrl!.isNotEmpty
                           ? const Color(0xFF673AB7)
                           : const Color(0xFF5F6368),
                     ),
                     onPressed: () => _pickEmbeddedImage(index),
-                    tooltip: 'Add image to question',
+                    tooltip: l10n.tooltipAddImageToQuestion,
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
                   ),
-               ],
-             ),
-           ),
+              ],
+            ),
+          ),
 
           // Embedded image preview (for non-image/video questions)
-          if (!isImageType && !isVideoType && !isInfoType && _questions[index].embeddedImageUrl != null && _questions[index].embeddedImageUrl!.isNotEmpty)
+          if (!isImageType &&
+              !isVideoType &&
+              !isInfoType &&
+              _questions[index].embeddedImageUrl != null &&
+              _questions[index].embeddedImageUrl!.isNotEmpty)
             _buildEmbeddedImagePreview(index),
 
           // Question text field
@@ -2834,10 +3264,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               controller: _questionControllers[index],
               decoration: InputDecoration(
                 hintText: isImageType
-                    ? 'Image title (optional)'
+                    ? l10n.imageTitleOptional
                     : isVideoType
-                    ? 'Video title'
-                    : 'Question',
+                    ? l10n.videoTitle
+                    : l10n.question,
                 hintStyle: const TextStyle(color: Color(0xFF202124)),
                 border: const UnderlineInputBorder(
                   borderSide: BorderSide(color: Color(0xFFDADCE0)),
@@ -2863,16 +3293,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: TextField(
-                controller: TextEditingController(
-                  text: _questions[index].description ?? '',
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Description',
-                  hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
-                  border: UnderlineInputBorder(
+                controller: _questionDescriptionController(index),
+                decoration: InputDecoration(
+                  hintText: l10n.description,
+                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
+                  border: const UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFFDADCE0)),
                   ),
-                  focusedBorder: UnderlineInputBorder(
+                  focusedBorder: const UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFF673AB7), width: 2),
                   ),
                 ),
@@ -2893,12 +3321,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: TextField(
-                controller: TextEditingController(
-                  text: _questions[index].description ?? '',
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Description',
-                  hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
+                controller: _questionDescriptionController(index),
+                decoration: InputDecoration(
+                  hintText: l10n.description,
+                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
                   border: InputBorder.none,
                 ),
                 style: const TextStyle(
@@ -2915,20 +3341,21 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             ),
 
           // Description field for all other question types
-          if (!isInfoType && !isDate && !isTime && _questions[index].showDescription)
+          if (!isInfoType &&
+              !isDate &&
+              !isTime &&
+              _questions[index].showDescription)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: TextField(
-                controller: TextEditingController(
-                  text: _questions[index].description ?? '',
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Description',
-                  hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
-                  border: UnderlineInputBorder(
+                controller: _questionDescriptionController(index),
+                decoration: InputDecoration(
+                  hintText: l10n.description,
+                  hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
+                  border: const UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFFDADCE0)),
                   ),
-                  focusedBorder: UnderlineInputBorder(
+                  focusedBorder: const UnderlineInputBorder(
                     borderSide: BorderSide(color: Color(0xFF673AB7), width: 2),
                   ),
                 ),
@@ -2955,10 +3382,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
           // Text answer preview
           if (question.type == QuestionType.shortAnswer)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: Text(
-                'Short answer text',
+                l10n.shortAnswerText,
                 style: TextStyle(
                   color: Color(0xFFBDBDBD),
                   fontSize: 14,
@@ -2968,10 +3395,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             ),
 
           if (question.type == QuestionType.paragraph)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: Text(
-                'Long answer text',
+                l10n.longAnswerText,
                 style: TextStyle(
                   color: Color(0xFFBDBDBD),
                   fontSize: 14,
@@ -3004,7 +3431,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 // Required toggle (not shown for Info type)
                 if (!isInfoType && !isImageType && !isVideoType)
                   Text(
-                    'Required',
+                    l10n.required,
                     style: TextStyle(
                       fontSize: 13,
                       color: _questions[index].isRequired
@@ -3015,7 +3442,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           : FontWeight.w400,
                     ),
                   ),
-                if (!isInfoType && !isImageType && !isVideoType) const SizedBox(width: 4),
+                if (!isInfoType && !isImageType && !isVideoType)
+                  const SizedBox(width: 4),
                 if (!isInfoType && !isImageType && !isVideoType)
                   Switch(
                     value: _questions[index].isRequired,
@@ -3028,15 +3456,16 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     activeThumbColor: const Color(0xFF673AB7),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  if (!isInfoType && !isImageType && !isVideoType) const SizedBox(width: 8),
+                if (!isInfoType && !isImageType && !isVideoType)
+                  const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(
-                    Icons.content_copy,
+                    Symbols.content_copy,
                     size: 20,
                     color: Color(0xFF5F6368),
                   ),
                   onPressed: () => _duplicateQuestion(index),
-                  tooltip: 'Duplicate',
+                  tooltip: l10n.duplicate,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
                     minWidth: 36,
@@ -3045,12 +3474,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 ),
                 IconButton(
                   icon: const Icon(
-                    Icons.delete_outline,
+                    Symbols.delete_outline,
                     size: 20,
                     color: Color(0xFF5F6368),
                   ),
                   onPressed: () => _removeQuestion(index),
-                  tooltip: 'Delete',
+                  tooltip: l10n.delete,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
                     minWidth: 36,
@@ -3060,7 +3489,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 // "3 dots" overflow menu for all question types
                 PopupMenuButton<String>(
                   icon: const Icon(
-                    Icons.more_vert,
+                    Symbols.more_vert,
                     size: 20,
                     color: Color(0xFF5F6368),
                   ),
@@ -3069,7 +3498,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     minWidth: 36,
                     minHeight: 36,
                   ),
-                  tooltip: 'More options',
+                  tooltip: l10n.tooltipMoreOptions,
                   onSelected: (value) {
                     _markDirty();
                     _safeSetState(() {
@@ -3105,8 +3534,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Show description',
+                              Text(
+                                l10n.showDescription,
                                 style: TextStyle(fontSize: 14),
                               ),
                             ],
@@ -3132,8 +3561,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Include year',
+                              Text(
+                                l10n.includeYear,
                                 style: TextStyle(fontSize: 14),
                               ),
                             ],
@@ -3159,8 +3588,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Duration',
+                              Text(
+                                l10n.duration,
                                 style: TextStyle(fontSize: 14),
                               ),
                             ],
@@ -3186,8 +3615,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Show description',
+                              Text(
+                                l10n.showDescription,
                                 style: TextStyle(fontSize: 14),
                               ),
                             ],
@@ -3208,13 +3637,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 child: Checkbox(
                                   value: _questions[index].showDescription,
                                   onChanged: null,
-                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   visualDensity: VisualDensity.compact,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Show description',
+                              Text(
+                                l10n.showDescription,
                                 style: TextStyle(fontSize: 14),
                               ),
                             ],
@@ -3235,6 +3665,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== CHOICE OPTIONS ====================
   Widget _buildChoiceOptions(int index) {
+    final l10n = AppLocalizations.of(context);
     final question = _questions[index];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -3247,19 +3678,19 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 children: [
                   if (question.type == QuestionType.multipleChoice)
                     const Icon(
-                      Icons.radio_button_unchecked,
+                      Symbols.radio_button_unchecked,
                       color: Color(0xFF9E9E9E),
                       size: 20,
                     )
                   else if (question.type == QuestionType.checkbox)
                     const Icon(
-                      Icons.check_box_outline_blank,
+                      Symbols.check_box_outline_blank,
                       color: Color(0xFF9E9E9E),
                       size: 20,
                     )
                   else
                     const Icon(
-                      Icons.arrow_drop_down,
+                      Symbols.arrow_drop_down,
                       color: Color(0xFF9E9E9E),
                       size: 20,
                     ),
@@ -3268,7 +3699,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     child: TextField(
                       controller: _optionControllers[index][optIdx],
                       decoration: InputDecoration(
-                        hintText: 'Option ${optIdx + 1}',
+                        hintText: l10n.optionLabel(optIdx + 1),
                         hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
                         border: InputBorder.none,
                         isDense: true,
@@ -3284,7 +3715,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   if (_optionControllers[index].length > 1)
                     IconButton(
                       icon: const Icon(
-                        Icons.close,
+                        Symbols.close,
                         size: 18,
                         color: Color(0xFF9E9E9E),
                       ),
@@ -3304,25 +3735,25 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 children: [
                   if (question.type == QuestionType.multipleChoice)
                     const Icon(
-                      Icons.radio_button_unchecked,
+                      Symbols.radio_button_unchecked,
                       color: Color(0xFFBDBDBD),
                       size: 20,
                     )
                   else if (question.type == QuestionType.checkbox)
                     const Icon(
-                      Icons.check_box_outline_blank,
+                      Symbols.check_box_outline_blank,
                       color: Color(0xFFBDBDBD),
                       size: 20,
                     )
                   else
                     const Icon(
-                      Icons.arrow_drop_down,
+                      Symbols.arrow_drop_down,
                       color: Color(0xFFBDBDBD),
                       size: 20,
                     ),
                   const SizedBox(width: 8),
                   Text(
-                    'Add option',
+                    l10n.addOption,
                     style: TextStyle(
                       color: const Color(0xFF673AB7).withValues(alpha: 0.7),
                       fontSize: 14,
@@ -3340,7 +3771,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Other',
+                    l10n.other,
                     style: TextStyle(
                       fontSize: 13,
                       color: _questions[index].isOther
@@ -3373,6 +3804,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== LINEAR SCALE CONTENT ====================
   Widget _buildLinearScaleContent(int index) {
+    final l10n = AppLocalizations.of(context);
     final q = _questions[index];
     final low = q.scaleLow;
     final high = q.scaleHigh;
@@ -3385,8 +3817,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           // Scale range configuration
           Row(
             children: [
-              const Text(
-                'Min value',
+              Text(
+                l10n.minValue,
                 style: TextStyle(fontSize: 12, color: Color(0xFF5F6368)),
               ),
               const SizedBox(width: 8),
@@ -3415,8 +3847,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 ),
               ),
               const SizedBox(width: 24),
-              const Text(
-                'Max value',
+              Text(
+                l10n.maxValue,
                 style: TextStyle(fontSize: 12, color: Color(0xFF5F6368)),
               ),
               const SizedBox(width: 8),
@@ -3463,7 +3895,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   child: Column(
                     children: [
                       Icon(
-                        Icons.radio_button_unchecked,
+                        Symbols.radio_button_unchecked,
                         size: 20,
                         color: const Color(0xFF673AB7).withValues(alpha: 0.6),
                       ),
@@ -3488,7 +3920,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     child: Column(
                       children: [
                         Icon(
-                          Icons.radio_button_unchecked,
+                          Symbols.radio_button_unchecked,
                           size: 20,
                           color: const Color(0xFF673AB7).withValues(alpha: 0.6),
                         ),
@@ -3512,7 +3944,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   child: Column(
                     children: [
                       Icon(
-                        Icons.radio_button_unchecked,
+                        Symbols.radio_button_unchecked,
                         size: 20,
                         color: const Color(0xFF673AB7).withValues(alpha: 0.6),
                       ),
@@ -3541,7 +3973,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 child: TextField(
                   controller: _scaleLowLabelControllers[index],
                   decoration: InputDecoration(
-                    hintText: 'Label (optional)',
+                    hintText: l10n.labelOptional,
                     hintStyle: const TextStyle(
                       color: Color(0xFFBDBDBD),
                       fontSize: 12,
@@ -3570,7 +4002,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 child: TextField(
                   controller: _scaleHighLabelControllers[index],
                   decoration: InputDecoration(
-                    hintText: 'Label (optional)',
+                    hintText: l10n.labelOptional,
                     hintStyle: const TextStyle(
                       color: Color(0xFFBDBDBD),
                       fontSize: 12,
@@ -3603,11 +4035,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== GRID CONTENT ====================
   Widget _buildGridContent(int index) {
+    final l10n = AppLocalizations.of(context);
     final q = _questions[index];
     final isCheckboxGrid = q.type == QuestionType.checkboxGrid;
     final rowIcon = isCheckboxGrid
-        ? Icons.check_box_outline_blank
-        : Icons.radio_button_unchecked;
+        ? Symbols.check_box_outline_blank
+        : Symbols.radio_button_unchecked;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
@@ -3615,10 +4048,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Columns section
-          const Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 0, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 0, 4),
             child: Text(
-              'Columns',
+              l10n.columns,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -3632,7 +4065,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               child: Row(
                 children: [
                   const Icon(
-                    Icons.arrow_drop_down,
+                    Symbols.arrow_drop_down,
                     color: Color(0xFFBDBDBD),
                     size: 20,
                   ),
@@ -3641,7 +4074,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     child: TextField(
                       controller: _gridColControllers[index][colIdx],
                       decoration: InputDecoration(
-                        hintText: 'Column ${colIdx + 1}',
+                        hintText: l10n.columnN(colIdx + 1),
                         hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
                         border: InputBorder.none,
                         isDense: true,
@@ -3657,7 +4090,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   if (_gridColControllers[index].length > 1)
                     IconButton(
                       icon: const Icon(
-                        Icons.close,
+                        Symbols.close,
                         size: 16,
                         color: Color(0xFF9E9E9E),
                       ),
@@ -3675,10 +4108,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               onTap: () => _addGridColumn(index),
               child: Row(
                 children: [
-                  const Icon(Icons.add, color: Color(0xFF673AB7), size: 18),
+                  const Icon(Symbols.add, color: Color(0xFF673AB7), size: 18),
                   const SizedBox(width: 4),
                   Text(
-                    'Add column',
+                    l10n.addColumn,
                     style: TextStyle(
                       color: const Color(0xFF673AB7).withValues(alpha: 0.7),
                       fontSize: 13,
@@ -3692,10 +4125,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           const Divider(height: 1, indent: 8, endIndent: 8),
 
           // Rows section
-          const Padding(
-            padding: EdgeInsets.fromLTRB(8, 8, 0, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 0, 4),
             child: Text(
-              'Rows',
+              l10n.rows,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -3714,7 +4147,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     child: TextField(
                       controller: _gridRowControllers[index][rowIdx],
                       decoration: InputDecoration(
-                        hintText: 'Row ${rowIdx + 1}',
+                        hintText: l10n.rowN(rowIdx + 1),
                         hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
                         border: InputBorder.none,
                         isDense: true,
@@ -3730,7 +4163,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   if (_gridRowControllers[index].length > 1)
                     IconButton(
                       icon: const Icon(
-                        Icons.close,
+                        Symbols.close,
                         size: 16,
                         color: Color(0xFF9E9E9E),
                       ),
@@ -3748,10 +4181,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               onTap: () => _addGridRow(index),
               child: Row(
                 children: [
-                  const Icon(Icons.add, color: Color(0xFF673AB7), size: 18),
+                  const Icon(Symbols.add, color: Color(0xFF673AB7), size: 18),
                   const SizedBox(width: 4),
                   Text(
-                    'Add row',
+                    l10n.addRow,
                     style: TextStyle(
                       color: const Color(0xFF673AB7).withValues(alpha: 0.7),
                       fontSize: 13,
@@ -3768,13 +4201,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== DATE CONTENT ====================
   Widget _buildDateContent(int index) {
+    final l10n = AppLocalizations.of(context);
     final q = _questions[index];
     // Build the date format string based on options
     String dateFormat;
     if (q.dateIncludeYear) {
-      dateFormat = 'MM/DD/YYYY';
+      dateFormat = l10n.dateFormatWithYear;
     } else {
-      dateFormat = 'MM/DD';
+      dateFormat = l10n.dateFormatNoYear;
     }
 
     return Padding(
@@ -3793,7 +4227,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.calendar_today,
+                  Symbols.calendar_today,
                   color: Color(0xFF9E9E9E),
                   size: 18,
                 ),
@@ -3816,6 +4250,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== TIME CONTENT ====================
   Widget _buildTimeContent(int index) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: Column(
@@ -3832,13 +4267,15 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.access_time,
+                  Symbols.access_time,
                   color: Color(0xFF9E9E9E),
                   size: 18,
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  _questions[index].timeDuration ? 'HH:MM:SS' : 'HH:MM',
+                  _questions[index].timeDuration
+                      ? l10n.timeFormatDuration
+                      : l10n.timeFormatStandard,
                   style: const TextStyle(
                     color: Color(0xFFBDBDBD),
                     fontSize: 14,
@@ -3855,6 +4292,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== IMAGE CONTENT ====================
   Widget _buildImageContent(int index) {
+    final l10n = AppLocalizations.of(context);
     final mediaUrl = _questions[index].mediaUrl;
     final hasImage = mediaUrl != null && mediaUrl.isNotEmpty;
 
@@ -3875,36 +4313,31 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   children: [
                     // Display image from file or network
                     mediaUrl.startsWith('http')
-                        ? Image.network(
-                            mediaUrl,
+                        ? SafeImageLoader(
+                            url: mediaUrl,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            loadingBuilder: (ctx, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
-                                height: 140,
-                                color: const Color(0xFFF5F5F5),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFF673AB7),
-                                    strokeWidth: 2,
-                                  ),
+                            loading: Container(
+                              height: 140,
+                              color: const Color(0xFFF5F5F5),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF673AB7),
+                                  strokeWidth: 2,
                                 ),
-                              );
-                            },
-                            errorBuilder: (ctx, error, _) {
-                              return Container(
-                                height: 140,
-                                color: const Color(0xFFF5F5F5),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.broken_image,
-                                    color: Color(0xFFBDBDBD),
-                                    size: 48,
-                                  ),
+                              ),
+                            ),
+                            fallback: Container(
+                              height: 140,
+                              color: const Color(0xFFF5F5F5),
+                              child: const Center(
+                                child: Icon(
+                                  Symbols.broken_image,
+                                  color: Color(0xFFBDBDBD),
+                                  size: 48,
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           )
                         : Image.file(
                             File(mediaUrl),
@@ -3916,7 +4349,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 color: const Color(0xFFF5F5F5),
                                 child: const Center(
                                   child: Icon(
-                                    Icons.broken_image,
+                                    Symbols.broken_image,
                                     color: Color(0xFFBDBDBD),
                                     size: 48,
                                   ),
@@ -3929,13 +4362,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                       top: 8,
                       right: 8,
                       child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(16),
+                        decoration: const BoxDecoration(
+                          color: _kOverlayBlack60,
+                          borderRadius: BorderRadius.all(Radius.circular(16)),
                         ),
                         child: IconButton(
                           icon: const Icon(
-                            Icons.close,
+                            Symbols.close,
                             color: Colors.white,
                             size: 18,
                           ),
@@ -3956,13 +4389,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.add_photo_alternate_outlined,
+                      Symbols.add_photo_alternate,
                       size: 48,
                       color: Color(0xFF9E9E9E),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Click to upload image',
+                      l10n.clickToUploadImage,
                       style: TextStyle(
                         color: const Color(0xFF9E9E9E).withValues(alpha: 0.8),
                         fontSize: 14,
@@ -4001,8 +4434,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       debugPrint('Could not launch YouTube URL: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open YouTube.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).couldNotOpenYouTube),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 2),
           ),
@@ -4033,13 +4466,15 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         _hasLoadedResponses = true;
         // Clamp selection indices so they stay within bounds
         if (_selectedIndividualIndex >= _responses.length) {
-          _selectedIndividualIndex =
-              _responses.isEmpty ? 0 : _responses.length - 1;
+          _selectedIndividualIndex = _responses.isEmpty
+              ? 0
+              : _responses.length - 1;
         }
         final answerable = _answerableQuestionIndices();
         if (_selectedQuestionIndex >= answerable.length) {
-          _selectedQuestionIndex =
-              answerable.isEmpty ? 0 : answerable.length - 1;
+          _selectedQuestionIndex = answerable.isEmpty
+              ? 0
+              : answerable.length - 1;
         }
       });
     }
@@ -4048,6 +4483,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   Future<void> _loadResponses() async => _loadResponsesForTab();
 
   Widget _buildResponseTab() {
+    final l10n = AppLocalizations.of(context);
     if (_currentFormId == null) {
       return Center(
         child: Padding(
@@ -4055,14 +4491,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.save_outlined,
-                size: 64,
-                color: Color(0xFFDADCE0),
-              ),
+              const Icon(Symbols.save, size: 64, color: Color(0xFFDADCE0)),
               const SizedBox(height: 16),
-              const Text(
-                'Save your form first',
+              Text(
+                l10n.saveYourFormFirst,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w500,
@@ -4070,8 +4502,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'You need to save your form before you can view responses.',
+              Text(
+                l10n.needSaveForResponses,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Color(0xFF80868B)),
               ),
@@ -4087,8 +4519,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           strokeWidth: 2,
                         ),
                       )
-                    : const Icon(Icons.save, size: 20),
-                label: Text(_isSaving ? 'Saving...' : 'Save form'),
+                    : const Icon(Symbols.save, size: 20),
+                label: Text(_isSaving ? l10n.saving : l10n.saveForm),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF673AB7),
                   foregroundColor: Colors.white,
@@ -4171,6 +4603,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   Widget _buildExportButtonBar() {
+    final l10n = AppLocalizations.of(context);
     final bool hasResponses = _responses.isNotEmpty && _currentFormId != null;
     return Container(
       decoration: BoxDecoration(
@@ -4183,27 +4616,27 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       child: Row(
         children: [
           _buildExportIconButton(
-            icon: Icons.table_chart_outlined,
-            label: 'XLSX',
-            tooltip: 'Export as .xlsx',
+            icon: Symbols.table_chart,
+            label: l10n.exportXlsx,
+            tooltip: l10n.tooltipExportXlsx,
             onPressed: hasResponses ? () => _showExportDialog('xlsx') : null,
           ),
           const SizedBox(width: 8),
           _buildExportIconButton(
-            icon: Icons.grid_on_outlined,
-            label: 'CSV',
-            tooltip: 'Export as .csv',
+            icon: Symbols.grid_on,
+            label: l10n.exportCsv,
+            tooltip: l10n.tooltipExportCsv,
             onPressed: hasResponses ? () => _showExportDialog('csv') : null,
           ),
           const SizedBox(width: 8),
           _buildExportIconButton(
             icon: _linkedSheetId != null
-                ? Icons.table_chart
-                : Icons.add_chart_outlined,
-            label: 'Sheets',
+                ? Symbols.table_chart
+                : Symbols.add_chart,
+            label: l10n.sheets,
             tooltip: _linkedSheetId != null
-                ? 'Open linked Google Sheet'
-                : 'Link to Google Sheet',
+                ? l10n.tooltipOpenLinkedSheet
+                : l10n.tooltipLinkToSheet,
             onPressed: _currentFormId != null ? _linkToGoogleSheet : null,
             color: _linkedSheetId != null ? const Color(0xFF0F9D58) : null,
           ),
@@ -4271,20 +4704,21 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     showDialog<String>(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(
-                format == 'xlsx'
-                    ? Icons.table_chart_outlined
-                    : Icons.grid_on_outlined,
+                format == 'xlsx' ? Symbols.table_chart : Symbols.grid_on,
                 color: const Color(0xFF673AB7),
                 size: 24,
               ),
               const SizedBox(width: 10),
               Text(
-                'Export as ${format.toUpperCase()}',
+                l10n.exportAs(format.toUpperCase()),
                 style: const TextStyle(fontSize: 18),
               ),
             ],
@@ -4293,8 +4727,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Enter a file name for the export:',
+              Text(
+                l10n.enterFileName,
                 style: TextStyle(fontSize: 14, color: Color(0xFF5F6368)),
               ),
               const SizedBox(height: 12),
@@ -4302,7 +4736,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 controller: fileNameController,
                 autofocus: false,
                 decoration: InputDecoration(
-                  hintText: 'File name',
+                  hintText: l10n.fileName,
                   suffixText: '.$format',
                   suffixStyle: TextStyle(
                     color: Colors.grey.shade500,
@@ -4334,9 +4768,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(null),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Color(0xFF5F6368)),
+              child: Text(
+                l10n.cancel,
+                style: const TextStyle(color: Color(0xFF5F6368)),
               ),
             ),
             ElevatedButton.icon(
@@ -4346,8 +4780,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     : fileNameController.text.trim();
                 Navigator.of(dialogContext).pop(name);
               },
-              icon: const Icon(Icons.download, size: 18),
-              label: const Text('Export'),
+              icon: const Icon(Symbols.download, size: 18),
+              label: Text(l10n.export),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF673AB7),
                 foregroundColor: Colors.white,
@@ -4370,8 +4804,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     });
   }
 
-  List<String> _buildExportHeaders() {
-    final headers = <String>['Response ID', 'Create Time', 'Last Submitted Time'];
+  List<String> _buildExportHeaders(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final headers = <String>[
+      l10n.responseId,
+      l10n.createTime,
+      l10n.lastSubmittedTime,
+    ];
     for (final i in _answerableQuestionIndices()) {
       final q = _questions[i];
       if ((q.type == QuestionType.multipleChoiceGrid ||
@@ -4383,7 +4822,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           }
         }
       } else {
-        headers.add(q.questionText.isNotEmpty ? q.questionText : 'Untitled');
+        headers.add(q.questionText.isNotEmpty ? q.questionText : l10n.untitled);
       }
     }
     return headers;
@@ -4415,7 +4854,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           for (int r = 0; r < q.gridRowQuestionIds.length; r++) {
             if (r < q.gridRows.length && q.gridRows[r].isNotEmpty) {
               final rowQId = q.gridRowQuestionIds[r];
-              row.add(_cleanExportAnswer(response.getAnswerForQuestion(rowQId)));
+              row.add(
+                _cleanExportAnswer(response.getAnswerForQuestion(rowQId)),
+              );
             }
           }
         } else {
@@ -4433,10 +4874,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     try {
       final excel = excel_lib.Excel.createExcel();
       final sheetName = excel.getDefaultSheet() ?? 'Sheet1';
-      excel.rename(sheetName, 'Responses');
-      final sheet = excel['Responses'];
+      excel.rename(
+        sheetName,
+        AppLocalizations.of(context).responsesSheet,
+      );
+      final sheet = excel[AppLocalizations.of(context).responsesSheet];
 
-      final headers = _buildExportHeaders();
+      final headers = _buildExportHeaders(context);
       final rows = _buildExportRows();
 
       // Write headers
@@ -4473,7 +4917,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Export failed: $e'),
+            content: Text(AppLocalizations.of(context).exportFailed('$e')),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -4483,15 +4927,12 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
 
     if (filePath != null && mounted) {
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: '$fileName.xlsx',
-      );
+      await Share.shareXFiles([XFile(filePath)], subject: '$fileName.xlsx');
     }
   }
 
   Future<void> _exportToCsv(String fileName) async {
-    final headers = _buildExportHeaders();
+    final headers = _buildExportHeaders(context);
     final rows = _buildExportRows();
 
     final buffer = StringBuffer();
@@ -4514,7 +4955,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Export failed: $e'),
+            content: Text(AppLocalizations.of(context).exportFailed('$e')),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -4524,10 +4965,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
 
     if (mounted) {
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: '$fileName.csv',
-      );
+      await Share.shareXFiles([XFile(filePath)], subject: '$fileName.csv');
     }
   }
 
@@ -4558,21 +4996,17 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     showDialog(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
-              const Icon(
-                Icons.link,
-                color: Color(0xFF0F9D58),
-                size: 24,
-              ),
+              const Icon(Symbols.link, color: Color(0xFF0F9D58), size: 24),
               const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Linked to Sheet',
-                  style: TextStyle(fontSize: 18),
-                ),
+              Expanded(
+                child: Text(l10n.linkedToSheet, style: const TextStyle(fontSize: 18)),
               ),
             ],
           ),
@@ -4581,7 +5015,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Responses are automatically saved to this spreadsheet:',
+                l10n.responsesAutoSaved,
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
               ),
               const SizedBox(height: 12),
@@ -4595,7 +5029,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 child: Row(
                   children: [
                     const Icon(
-                      Icons.table_chart,
+                      Symbols.table_chart,
                       color: Color(0xFF0F9D58),
                       size: 22,
                     ),
@@ -4605,7 +5039,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _linkedSheetTitle ?? 'Linked Spreadsheet',
+                            _linkedSheetTitle ?? l10n.linkedSpreadsheet,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -4615,7 +5049,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Tap to open in browser',
+                            l10n.tapToOpenInBrowser,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -4636,7 +5070,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 _unlinkSheet();
               },
               child: Text(
-                'Unlink',
+                l10n.unlink,
                 style: TextStyle(color: Colors.red.shade400),
               ),
             ),
@@ -4648,8 +5082,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   mode: LaunchMode.externalApplication,
                 );
               },
-              icon: const Icon(Icons.open_in_new, size: 18),
-              label: const Text('Open Sheet'),
+              icon: const Icon(Symbols.open_in_new, size: 18),
+              label: Text(l10n.openSheet),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0F9D58),
                 foregroundColor: Colors.white,
@@ -4673,19 +5107,18 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     showDialog<String>(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
-              const Icon(
-                Icons.add_chart_outlined,
-                color: Color(0xFF673AB7),
-                size: 24,
-              ),
+              const Icon(Symbols.add_chart, color: Color(0xFF673AB7), size: 24),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Link to Google Sheet',
+                  l10n.linkToGoogleSheet,
                   style: TextStyle(fontSize: 18),
                 ),
               ),
@@ -4696,8 +5129,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Form responses will be automatically saved to this spreadsheet. '
-                'A new sheet tab will be created with all responses.',
+                l10n.linkSheetDesc,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 16),
@@ -4705,9 +5137,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 controller: sheetNameController,
                 autofocus: false,
                 decoration: InputDecoration(
-                  hintText: 'Spreadsheet name',
+                  hintText: l10n.spreadsheetName,
                   prefixIcon: const Icon(
-                    Icons.table_chart,
+                    Symbols.table_chart,
                     color: Color(0xFF0F9D58),
                     size: 22,
                   ),
@@ -4737,20 +5169,20 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(null),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Color(0xFF5F6368)),
+              child: Text(
+                l10n.cancel,
+                style: const TextStyle(color: Color(0xFF5F6368)),
               ),
             ),
             ElevatedButton.icon(
               onPressed: () {
                 final name = sheetNameController.text.trim().isEmpty
-                    ? 'Untitled (Responses)'
+                    ? '${l10n.untitledForm} (${l10n.responsesSheet})'
                     : sheetNameController.text.trim();
                 Navigator.of(dialogContext).pop(name);
               },
-              icon: const Icon(Icons.link, size: 18),
-              label: const Text('Create & Link'),
+              icon: const Icon(Symbols.link, size: 18),
+              label: Text(l10n.createAndLink),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF673AB7),
                 foregroundColor: Colors.white,
@@ -4776,15 +5208,16 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     try {
       // Step 1: Create empty spreadsheet via Sheets API
-      final spreadsheetId =
-          await _formsService.createEmptySpreadsheet(sheetName);
+      final spreadsheetId = await _formsService.createEmptySpreadsheet(
+        sheetName,
+      );
 
       if (spreadsheetId == null) {
         if (!mounted) return;
         _safeSetState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create spreadsheet. Please try again.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToCreateSheet),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
@@ -4813,11 +5246,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Form linked to "$sheetName" successfully!'),
+            content: Text(AppLocalizations.of(context).formLinkedToSheet(sheetName)),
             backgroundColor: const Color(0xFF0F9D58),
             duration: const Duration(seconds: 3),
             action: SnackBarAction(
-              label: 'Open',
+              label: AppLocalizations.of(context).open,
               textColor: Colors.white,
               onPressed: () {
                 launchUrl(
@@ -4834,7 +5267,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         final error = result['error'] as String? ?? 'Unknown error';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to link: $error'),
+            content: Text(AppLocalizations.of(context).failedToLink(error)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -4845,7 +5278,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       _safeSetState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: ${e.toString()}'),
+          content: Text(AppLocalizations.of(context).errorWithMessage(e.toString())),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -4858,22 +5291,22 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Unlink Sheet?'),
-          content: const Text(
-            'New form responses will no longer be saved to this spreadsheet. '
-            'Existing responses in the sheet will not be deleted.',
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
+          title: Text(l10n.unlinkSheetTitle),
+          content: Text(l10n.unlinkSheetDesc),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: Text(
-                'Unlink',
+                l10n.unlink,
                 style: TextStyle(color: Colors.red.shade400),
               ),
             ),
@@ -4886,8 +5319,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     setState(() => _isSaving = true);
 
-    final result =
-        await _appsScriptService.unlinkFormFromSheet(_currentFormId!);
+    final result = await _appsScriptService.unlinkFormFromSheet(
+      _currentFormId!,
+    );
 
     if (!mounted) return;
     _safeSetState(() {
@@ -4900,8 +5334,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sheet unlinked successfully.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).sheetUnlinked),
           backgroundColor: Color(0xFF0F9D58),
           duration: Duration(seconds: 2),
         ),
@@ -4910,7 +5344,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       final error = result['error'] as String? ?? 'Unknown error';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to unlink: $error'),
+          content: Text(AppLocalizations.of(context).failedToUnlink(error)),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -4937,26 +5371,23 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   color: Colors.white,
                 ),
               )
-            : const Icon(Icons.refresh, size: 28),
+            : const Icon(Symbols.refresh, size: 28),
       ),
     );
   }
 
   Widget _buildEmptyResponsesView() {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Color(0xFFDADCE0),
-            ),
+            const Icon(Symbols.inbox, size: 64, color: Color(0xFFDADCE0)),
             const SizedBox(height: 16),
-            const Text(
-              'No responses yet',
+            Text(
+              l10n.noResponsesYet,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w500,
@@ -4964,8 +5395,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Responses will appear here once people submit your form.',
+            Text(
+              l10n.noResponsesDesc,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Color(0xFF80868B)),
             ),
@@ -4975,15 +5406,15 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: _responderUri!));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Link copied to clipboard!'),
+                    SnackBar(
+                      content: Text(l10n.linkCopiedToClipboardExclaim),
                       backgroundColor: Colors.green,
                       duration: Duration(seconds: 2),
                     ),
                   );
                 },
-                icon: const Icon(Icons.share, size: 20),
-                label: const Text('Share this form'),
+                icon: const Icon(Symbols.share, size: 20),
+                label: Text(l10n.shareThisForm),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF673AB7),
                   foregroundColor: Colors.white,
@@ -5004,6 +5435,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   Widget _buildResponseBottomBar() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -5021,22 +5453,22 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           children: [
             Expanded(
               child: _buildSubTabButton(
-                icon: Icons.bar_chart,
-                label: 'Summary',
+                icon: Symbols.bar_chart,
+                label: l10n.responseSubSummary,
                 index: 0,
               ),
             ),
             Expanded(
               child: _buildSubTabButton(
-                icon: Icons.quiz_outlined,
-                label: 'Question',
+                icon: Symbols.quiz,
+                label: l10n.responseSubQuestion,
                 index: 1,
               ),
             ),
             Expanded(
               child: _buildSubTabButton(
-                icon: Icons.person_outline,
-                label: 'Individual',
+                icon: Symbols.person_outline,
+                label: l10n.responseSubIndividual,
                 index: 2,
               ),
             ),
@@ -5103,6 +5535,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== SUMMARY VIEW ====================
   Widget _buildSummaryView() {
+    final l10n = AppLocalizations.of(context);
     final totalResponses = _responses.length;
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -5117,13 +5550,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           child: Row(
             children: [
               const Icon(
-                Icons.people_outline,
+                Symbols.people_outline,
                 color: Color(0xFF673AB7),
                 size: 28,
               ),
               const SizedBox(width: 12),
               Text(
-                '$totalResponses ${totalResponses == 1 ? 'response' : 'responses'}',
+                l10n.nResponses(totalResponses),
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -5142,6 +5575,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   List<Widget> _buildQuestionSummaries() {
+    final l10n = AppLocalizations.of(context);
     final widgets = <Widget>[];
     for (final i in _answerableQuestionIndices()) {
       final q = _questions[i];
@@ -5203,7 +5637,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                         children: [
                           Text(
                             q.questionText.isEmpty
-                                ? 'Untitled Question'
+                                ? l10n.untitledQuestion
                                 : q.questionText,
                             style: const TextStyle(
                               fontSize: 16,
@@ -5213,7 +5647,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$totalAnswered ${totalAnswered == 1 ? 'response' : 'responses'}',
+                            l10n.nResponses(totalAnswered),
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF80868B),
@@ -5236,6 +5670,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   Widget _buildQuestionSummaryContent(int questionIndex) {
+    final l10n = AppLocalizations.of(context);
     final q = _questions[questionIndex];
     final answerCounts = <String, int>{};
     var totalAnswered = 0;
@@ -5260,8 +5695,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
 
     if (totalAnswered == 0) {
-      return const Text(
-        'No answers yet.',
+      return Text(
+        l10n.noAnswersYet,
         style: TextStyle(
           color: Color(0xFF9E9E9E),
           fontSize: 14,
@@ -5360,7 +5795,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '... and ${uniqueCount - 10} more',
+                l10n.andNMore(uniqueCount - 10),
                 style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
               ),
             ),
@@ -5669,6 +6104,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ---------- VERTICAL BAR CHART (Grid) ----------
   Widget _buildGridChart(QuestionItem q, int questionIndex) {
+    final l10n = AppLocalizations.of(context);
     final barColors = [
       const Color(0xFF673AB7),
       const Color(0xFF4285F4),
@@ -5685,9 +6121,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     final rows = q.gridRows.where((r) => r.isNotEmpty).toList();
     final cols = q.gridColumns.where((c) => c.isNotEmpty).toList();
     if (rows.isEmpty || cols.isEmpty) {
-      return const Text(
-        'No grid data.',
-        style: TextStyle(
+      return Text(
+        l10n.noGridData,
+        style: const TextStyle(
           color: Color(0xFF9E9E9E),
           fontSize: 14,
           fontStyle: FontStyle.italic,
@@ -5726,8 +6162,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       }
     }
     if (totalCells == 0) {
-      return const Text(
-        'No answers yet.',
+      return Text(
+        l10n.noAnswersYet,
         style: TextStyle(
           color: Color(0xFF9E9E9E),
           fontSize: 14,
@@ -6007,12 +6443,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== QUESTION VIEW ====================
   Widget _buildQuestionView() {
+    final l10n = AppLocalizations.of(context);
     final questionIndices = _answerableQuestionIndices();
 
     if (questionIndices.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No questions found.',
+          l10n.noQuestionsFound,
           style: TextStyle(color: Color(0xFF5F6368), fontSize: 16),
         ),
       );
@@ -6034,8 +6471,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              const Text(
-                'Question: ',
+              Text(
+                l10n.questionLabel,
                 style: TextStyle(fontSize: 14, color: Color(0xFF5F6368)),
               ),
               const SizedBox(width: 8),
@@ -6051,7 +6488,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                       value: entry.key,
                       child: Text(
                         q.questionText.isEmpty
-                            ? 'Question ${entry.key + 1}'
+                            ? l10n.questionN(entry.key + 1)
                             : q.questionText,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 14),
@@ -6079,7 +6516,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 onPressed: _selectedQuestionIndex > 0
                     ? () => _safeSetState(() => _selectedQuestionIndex--)
                     : null,
-                icon: const Icon(Icons.chevron_left),
+                icon: const Icon(Symbols.chevron_left),
                 color: const Color(0xFF673AB7),
               ),
               Text(
@@ -6090,7 +6527,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 onPressed: _selectedQuestionIndex < questionIndices.length - 1
                     ? () => _safeSetState(() => _selectedQuestionIndex++)
                     : null,
-                icon: const Icon(Icons.chevron_right),
+                icon: const Icon(Symbols.chevron_right),
                 color: const Color(0xFF673AB7),
               ),
             ],
@@ -6115,7 +6552,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     children: [
                       Text(
                         currentQ.questionText.isEmpty
-                            ? 'Untitled Question'
+                            ? l10n.untitledQuestion
                             : currentQ.questionText,
                         style: const TextStyle(
                           fontSize: 18,
@@ -6125,7 +6562,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _questionTypeLabel(currentQ.type),
+                        _questionTypeLabel(context, currentQ.type),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF80868B),
@@ -6147,6 +6584,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== QUESTION PATTERN CONTENT ====================
   Widget _buildQuestionPatternContent(int questionIndex) {
+    final l10n = AppLocalizations.of(context);
     final q = _questions[questionIndex];
 
     // Collect all answers and group by pattern
@@ -6161,8 +6599,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     patternCounts.remove('');
 
     if (patternCounts.isEmpty) {
-      return const Text(
-        'No answers yet.',
+      return Text(
+        l10n.noAnswersYet,
         style: TextStyle(
           color: Color(0xFF9E9E9E),
           fontSize: 14,
@@ -6196,7 +6634,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
               _buildPatternOptions(q, pattern),
               const SizedBox(height: 8),
               Text(
-                '$count ${count == 1 ? 'Response' : 'Responses'}',
+                l10n.nResponses(count),
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF673AB7),
@@ -6224,8 +6662,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   children: [
                     Icon(
                       pattern == opt
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
+                          ? Symbols.radio_button_checked
+                          : Symbols.radio_button_unchecked,
                       color: pattern == opt
                           ? const Color(0xFF673AB7)
                           : const Color(0xFFBDBDBD),
@@ -6267,8 +6705,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   children: [
                     Icon(
                       selected.contains(opt)
-                          ? Icons.check_box
-                          : Icons.check_box_outline_blank,
+                          ? Symbols.check_box
+                          : Symbols.check_box_outline_blank,
                       color: selected.contains(opt)
                           ? const Color(0xFF673AB7)
                           : const Color(0xFFBDBDBD),
@@ -6303,7 +6741,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            const Icon(Icons.linear_scale, color: Color(0xFF673AB7), size: 20),
+            const Icon(
+              Symbols.linear_scale,
+              color: Color(0xFF673AB7),
+              size: 20,
+            ),
             const SizedBox(width: 8),
             Text(
               pattern,
@@ -6339,7 +6781,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             child: Row(
               children: [
                 const Icon(
-                  Icons.check_circle,
+                  Symbols.check_circle,
                   color: Color(0xFF673AB7),
                   size: 16,
                 ),
@@ -6386,10 +6828,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== INDIVIDUAL VIEW ====================
   Widget _buildIndividualView() {
+    final l10n = AppLocalizations.of(context);
     if (_responses.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No responses.',
+          l10n.noResponses,
           style: TextStyle(color: Color(0xFF5F6368), fontSize: 16),
         ),
       );
@@ -6415,11 +6858,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 onPressed: _selectedIndividualIndex > 0
                     ? () => _safeSetState(() => _selectedIndividualIndex--)
                     : null,
-                icon: const Icon(Icons.chevron_left),
+                icon: const Icon(Symbols.chevron_left),
                 color: const Color(0xFF673AB7),
               ),
               Text(
-                '${_selectedIndividualIndex + 1} of ${_responses.length}',
+                l10n.responseNOfTotal(
+                  _selectedIndividualIndex + 1,
+                  _responses.length,
+                ),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -6430,7 +6876,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 onPressed: _selectedIndividualIndex < _responses.length - 1
                     ? () => _safeSetState(() => _selectedIndividualIndex++)
                     : null,
-                icon: const Icon(Icons.chevron_right),
+                icon: const Icon(Symbols.chevron_right),
                 color: const Color(0xFF673AB7),
               ),
             ],
@@ -6452,7 +6898,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 child: Row(
                   children: [
                     const Icon(
-                      Icons.access_time,
+                      Symbols.access_time,
                       color: Color(0xFF673AB7),
                       size: 20,
                     ),
@@ -6460,8 +6906,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     Expanded(
                       child: Text(
                         submittedTime.isNotEmpty
-                            ? 'Submitted: $submittedTime'
-                            : 'Response ${_selectedIndividualIndex + 1}',
+                            ? l10n.submittedTime(submittedTime)
+                            : l10n.responseN(_selectedIndividualIndex + 1),
                         style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF5F6368),
@@ -6483,6 +6929,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   List<Widget> _buildIndividualAnswers(FormResponse response) {
+    final l10n = AppLocalizations.of(context);
     final widgets = <Widget>[];
     for (final i in _answerableQuestionIndices()) {
       final q = _questions[i];
@@ -6529,7 +6976,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                         children: [
                           Text(
                             q.questionText.isEmpty
-                                ? 'Untitled Question'
+                                ? l10n.untitledQuestion
                                 : q.questionText,
                             style: const TextStyle(
                               fontSize: 15,
@@ -6555,8 +7002,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                               ),
                             )
                           else
-                            const Text(
-                              'No answer',
+                            Text(
+                              l10n.noAnswer,
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Color(0xFF9E9E9E),
@@ -6633,7 +7080,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         debugPrint('Effective shuffleQuestions: $effectiveShuffle');
 
         _safeSetState(() {
-          _isAcceptingResponses = settings['isAcceptingResponses'] as bool? ?? true;
+          _isAcceptingResponses =
+              settings['isAcceptingResponses'] as bool? ?? true;
           _limitOneResponse = settings['limitOneResponse'] as bool? ?? false;
           _editAfterSubmit = settings['editAfterSubmit'] as bool? ?? false;
           _showProgressBar = settings['showProgressBar'] as bool? ?? false;
@@ -6656,7 +7104,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       if (mounted && error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not load form settings: $error'),
+            content: Text(AppLocalizations.of(context).couldNotLoadSettings(error)),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 3),
           ),
@@ -6670,35 +7118,35 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   void _showPublishReminder() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.info_outline, color: Color(0xFF673AB7), size: 22),
-            SizedBox(width: 8),
-            Text('Publish Required', style: TextStyle(fontSize: 18)),
-          ],
-        ),
-        content: const Text(
-          'You need to publish this form before it can accept responses. '
-          'Would you like to publish it now?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Symbols.info, color: Color(0xFF673AB7), size: 22),
+              const SizedBox(width: 8),
+              Text(l10n.publishRequired, style: const TextStyle(fontSize: 18)),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _togglePublish();
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF673AB7),
+          content: Text(l10n.publishRequiredDesc),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancel),
             ),
-            child: const Text('Publish'),
-          ),
-        ],
-      ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _togglePublish();
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF673AB7),
+              ),
+              child: Text(l10n.publish),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -6712,8 +7160,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   Future<void> _togglePublish() async {
     if (_currentFormId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please save the form first before publishing.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).saveBeforePublishing),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 2),
         ),
@@ -6752,9 +7200,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle, color: Colors.white),
+              const Icon(Symbols.check_circle, color: Colors.white),
               const SizedBox(width: 8),
-              const Expanded(child: Text('Form published and now accepting responses!')),
+              Expanded(
+                child: Text(AppLocalizations.of(context).formPublished),
+              ),
             ],
           ),
           backgroundColor: Colors.green,
@@ -6765,7 +7215,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       final error = result?['error'] as String? ?? 'Unknown error';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to publish: ${_friendlyError(error)}'),
+          content: Text(AppLocalizations.of(context).failedToPublish(_friendlyError(context, error))),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 4),
         ),
@@ -6780,47 +7230,59 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                    Icon(
+                      Symbols.check_circle,
+                      color: Colors.green[700],
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Form is published',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    Text(
+                      l10n.formIsPublished,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.link, size: 20),
-                title: const Text('Copy form link'),
+                leading: const Icon(Symbols.link, size: 20),
+                title: Text(l10n.copyFormLink),
                 onTap: () {
                   Navigator.pop(ctx);
                   if (_responderUri != null && _responderUri!.isNotEmpty) {
                     Clipboard.setData(ClipboardData(text: _responderUri!));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Link copied to clipboard'),
+                      SnackBar(
+                        content: Text(l10n.linkCopiedToClipboard),
                         backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   }
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.toggle_off, size: 20),
-                title: const Text('Unpublish form'),
-                subtitle: const Text('Form will stop accepting responses'),
+                leading: const Icon(Symbols.toggle_off, size: 20),
+                title: Text(l10n.unpublishForm),
+                subtitle: Text(l10n.unpublishFormDesc),
                 onTap: () async {
                   Navigator.pop(ctx);
                   _safeSetState(() => _isPublishing = true);
@@ -6832,7 +7294,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   if (!mounted) return;
                   _safeSetState(() {
                     _isPublishing = false;
-                    if (result != null && (result['success'] as bool? ?? false)) {
+                    if (result != null &&
+                        (result['success'] as bool? ?? false)) {
                       _isPublished = false;
                       _isAcceptingResponses = false;
                     }
@@ -6841,8 +7304,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     _reloadPreview();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Form unpublished'),
+                        SnackBar(
+                          content: Text(l10n.formUnpublished),
                           backgroundColor: Colors.orange,
                           duration: Duration(seconds: 2),
                         ),
@@ -6855,12 +7318,14 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             ],
           ),
         ),
-      ),
+        );
+      },
     );
   }
 
   // ==================== SETTINGS TAB ====================
   Widget _buildSettingsTab() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoadingSettings) {
       return _buildSettingsLoadingSkeleton();
     }
@@ -6869,37 +7334,40 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       padding: const EdgeInsets.all(16),
       children: [
         // ── Responses Section ──
-        _buildSettingsSectionHeader('Responses'),
+        _buildSettingsSectionHeader(l10n.settingsResponses),
         _buildSettingsCard([
           // Accept responses
           _buildSettingsSwitch(
-            icon: Icons.toggle_on,
-            title: 'Accept responses',
+            icon: Symbols.toggle_on,
+            title: l10n.acceptResponses,
             subtitle: _isAcceptingResponses
-                ? 'People can submit responses to this form'
-                : 'This form is not accepting responses',
+                ? l10n.acceptResponsesEnabled
+                : l10n.acceptResponsesDisabled,
             value: _isAcceptingResponses,
             onChanged: (val) {
               if (val && !_isPublished) {
                 _showPublishReminder();
                 return;
               }
-              _safeSetState(() { _markDirty(); _isAcceptingResponses = val; });
+              _safeSetState(() {
+                _markDirty();
+                _isAcceptingResponses = val;
+              });
             },
           ),
           const Divider(height: 1, indent: 56),
           // Collect email addresses
           _buildSettingsDropdown(
-            icon: Icons.email_outlined,
-            title: 'Collect email addresses',
-            subtitle: 'Choose how to collect responder emails',
+            icon: Symbols.email,
+            title: l10n.collectEmail,
+            subtitle: l10n.collectEmailDesc,
             value: _emailCollectionType,
-            items: const [
-              DropdownMenuItem(value: 'none', child: Text("Don't collect")),
-              DropdownMenuItem(value: 'verified', child: Text('Verified')),
+            items: [
+              DropdownMenuItem(value: 'none', child: Text(l10n.dontCollect)),
+              DropdownMenuItem(value: 'verified', child: Text(l10n.verified)),
               DropdownMenuItem(
                 value: 'responder_input',
-                child: Text('Responder input'),
+                child: Text(l10n.responderInput),
               ),
             ],
             onChanged: (val) {
@@ -6913,61 +7381,71 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           const Divider(height: 1, indent: 56),
           // Limit to 1 response
           _buildSettingsSwitch(
-            icon: Icons.person_add_outlined,
-            title: 'Limit to 1 response',
-            subtitle: 'Requires responders to sign in',
+            icon: Symbols.person_add,
+            title: l10n.limitToOneResponse,
+            subtitle: l10n.limitToOneResponseDesc,
             value: _limitOneResponse,
-            onChanged: (val) => _safeSetState(() { _markDirty(); _limitOneResponse = val; }),
+            onChanged: (val) => _safeSetState(() {
+              _markDirty();
+              _limitOneResponse = val;
+            }),
           ),
           const Divider(height: 1, indent: 56),
           // Edit after submit
           _buildSettingsSwitch(
-            icon: Icons.edit_note,
-            title: 'Edit after submit',
-            subtitle:
-                'Allow responders to edit their response after submission',
+            icon: Symbols.edit_note,
+            title: l10n.editAfterSubmit,
+            subtitle: l10n.editAfterSubmitDesc,
             value: _editAfterSubmit,
-            onChanged: (val) => _safeSetState(() { _markDirty(); _editAfterSubmit = val; }),
+            onChanged: (val) => _safeSetState(() {
+              _markDirty();
+              _editAfterSubmit = val;
+            }),
           ),
         ]),
         const SizedBox(height: 20),
 
         // ── Presentation Section ──
-        _buildSettingsSectionHeader('Presentation'),
+        _buildSettingsSectionHeader(l10n.settingsPresentation),
         _buildSettingsCard([
           // Show progress bar
           _buildSettingsSwitch(
-            icon: Icons.linear_scale,
-            title: 'Show progress bar',
-            subtitle: 'Shows a progress bar at the bottom of the form',
+            icon: Symbols.linear_scale,
+            title: l10n.showProgressBar,
+            subtitle: l10n.showProgressBarDesc,
             value: _showProgressBar,
-            onChanged: (val) => _safeSetState(() { _markDirty(); _showProgressBar = val; }),
+            onChanged: (val) => _safeSetState(() {
+              _markDirty();
+              _showProgressBar = val;
+            }),
           ),
           const Divider(height: 1, indent: 56),
           // Shuffle questions
           _buildSettingsSwitch(
-            icon: Icons.shuffle,
-            title: 'Shuffle question order',
-            subtitle:
-                'Questions will appear in a different order for each responder',
+            icon: Symbols.shuffle,
+            title: l10n.shuffleQuestionOrder,
+            subtitle: l10n.shuffleQuestionOrderDesc,
             value: _shuffleQuestions,
-            onChanged: (val) => _safeSetState(() { _markDirty(); _shuffleQuestions = val; }),
+            onChanged: (val) => _safeSetState(() {
+              _markDirty();
+              _shuffleQuestions = val;
+            }),
           ),
           const Divider(height: 1, indent: 56),
           // Confirmation message
           _buildSettingsTextField(
-            icon: Icons.check_circle_outline,
-            title: 'Confirmation message',
-            subtitle: 'Message shown after form submission',
+            icon: Symbols.check_circle_outline,
+            title: l10n.confirmationMessage,
+            subtitle: l10n.confirmationMessageDesc,
             controller: _confirmationMessageController,
-            hintText: 'Enter confirmation message',
+            hintText: l10n.enterConfirmationMessage,
           ),
         ]),
         const SizedBox(height: 20),
 
         // ── Editors Section ──
         _buildSettingsSectionHeaderWithAction(
-          'Editors',
+          l10n.settingsEditors,
           onAdd: _isCurrentUserOwner ? _showAddEditorDialog : null,
         ),
         _buildSettingsCard(_buildEditorsSectionChildren()),
@@ -7147,7 +7625,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                     children: [
                       _SkeletonLine(width: 200, height: 16),
                       SizedBox(height: 6),
-                      _SkeletonLine(width: 90, height: 12, color: Color(0xFFF1F3F4)),
+                      _SkeletonLine(
+                        width: 90,
+                        height: 12,
+                        color: Color(0xFFF1F3F4),
+                      ),
                     ],
                   ),
                 ),
@@ -7187,7 +7669,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       padding: const EdgeInsets.all(16),
       children: [
         // ── Responses Section Skeleton ──
-        _buildSettingsSectionHeader('Responses'),
+        _buildSettingsSectionHeader(AppLocalizations.of(context).settingsResponses),
         _buildSettingsCard([
           _buildSkeletonRow(),
           const Divider(height: 1, indent: 56),
@@ -7200,7 +7682,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         const SizedBox(height: 20),
 
         // ── Presentation Section Skeleton ──
-        _buildSettingsSectionHeader('Presentation'),
+        _buildSettingsSectionHeader(AppLocalizations.of(context).settingsPresentation),
         _buildSettingsCard([
           _buildSkeletonRow(),
           const Divider(height: 1, indent: 56),
@@ -7211,7 +7693,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         const SizedBox(height: 20),
 
         // ── Editors Section Skeleton ──
-        _buildSettingsSectionHeader('Editors'),
+        _buildSettingsSectionHeader(AppLocalizations.of(context).settingsEditors),
         _buildSettingsCard([
           _buildSkeletonEditorRow(),
           const Divider(height: 1, indent: 72),
@@ -7269,6 +7751,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   List<Widget> _buildEditorsSectionChildren() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoadingEditors) {
       return [
         _buildSkeletonEditorRow(),
@@ -7292,14 +7775,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Text(
             _owner == null
-                ? 'No collaborators found for this form.'
+                ? l10n.noOwnerFound
                 : _isCurrentUserOwner
-                    ? 'No editors yet. Tap +Add to invite someone by Gmail.'
-                    : 'No editors on this form.',
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF80868B),
-            ),
+                ? l10n.noEditorsYet
+                : l10n.noEditorsOnForm,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF80868B)),
             textAlign: TextAlign.center,
           ),
         ),
@@ -7341,8 +7821,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           if (onAdd != null)
             TextButton.icon(
               onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add'),
+              icon: const Icon(Symbols.add, size: 18),
+              label: Text(AppLocalizations.of(context).add),
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF673AB7),
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -7365,23 +7845,32 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFF673AB7),
-            backgroundImage: editor.photoUrl != null
-                ? CachedNetworkImageProvider(editor.photoUrl!)
-                : null,
-            child: editor.photoUrl == null
-                ? Text(
+          editor.photoUrl != null
+              ? SafeAvatarImage(
+                  url: editor.photoUrl!,
+                  radius: 20,
+                  backgroundColor: const Color(0xFF673AB7),
+                  child: Text(
                     initial,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
-                  )
-                : null,
-          ),
+                  ),
+                )
+              : CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFF673AB7),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -7418,8 +7907,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 color: const Color(0xFFEDE7F6),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'Owner',
+              child: Text(
+                AppLocalizations.of(context).owner,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -7430,9 +7919,9 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           else if (showDelete)
             IconButton(
               onPressed: () => _showRemoveEditorConfirmation(editor),
-              icon: const Icon(Icons.person_remove_outlined),
+              icon: const Icon(Symbols.person_remove),
               color: const Color(0xFF5F6368),
-              tooltip: 'Remove editor',
+              tooltip: AppLocalizations.of(context).tooltipRemoveEditor,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             ),
         ],
@@ -7452,8 +7941,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     if (result == null) {
       _safeSetState(() => _isLoadingEditors = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to load editors.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).failedToLoadEditors),
           backgroundColor: Colors.red,
         ),
       );
@@ -7490,8 +7979,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     if (currentUserEmail != null && normalizedEmail == currentUserEmail) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You are already the owner of this form.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).alreadyOwner),
         ),
       );
       return;
@@ -7499,17 +7988,19 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     if (_owner?.email.toLowerCase() == normalizedEmail) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This user is already the owner of this form.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).alreadyOwnerOther),
         ),
       );
       return;
     }
 
-    if (_editors.any((editor) => editor.email.toLowerCase() == normalizedEmail)) {
+    if (_editors.any(
+      (editor) => editor.email.toLowerCase() == normalizedEmail,
+    )) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This user is already an editor on this form.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).alreadyEditor),
         ),
       );
       return;
@@ -7524,7 +8015,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       _safeSetState(() => _isLoadingEditors = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.errorMessage ?? 'Failed to add editor.'),
+          content: Text(
+            result.errorMessage ??
+                AppLocalizations.of(context).failedToAddEditor,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -7532,7 +8026,11 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Added $normalizedEmail as an editor.')),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).addedEditor(normalizedEmail),
+        ),
+      ),
     );
     await _loadEditors();
   }
@@ -7542,26 +8040,29 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove editor?'),
-        content: Text(
-          'Remove ${editor.displayLabel} from this form? They will no longer be able to edit it.',
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.removeEditorTitle),
+          content: Text(l10n.removeEditorDesc(editor.displayLabel)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Remove',
-              style: TextStyle(color: Colors.red),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.cancel),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(
+                l10n.remove,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirmed == true && mounted) {
@@ -7577,8 +8078,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     if (editor.isOwner) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The owner cannot be removed.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).cannotRemoveOwner),
           backgroundColor: Colors.red,
         ),
       );
@@ -7587,22 +8088,34 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     _safeSetState(() => _isLoadingEditors = true);
 
-    final result = await _formsService.removeEditor(formId, editor.permissionId);
+    final result = await _formsService.removeEditor(
+      formId,
+      editor.permissionId,
+    );
     if (!mounted) return;
 
     if (!result.success) {
       _safeSetState(() => _isLoadingEditors = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.errorMessage ?? 'Failed to remove editor.'),
+          content: Text(
+            result.errorMessage ??
+                AppLocalizations.of(context).failedToRemoveEditor,
+          ),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Removed ${editor.displayLabel}.')),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).removedEditor(editor.displayLabel),
+        ),
+      ),
     );
     await _loadEditors();
   }
@@ -7748,7 +8261,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                       color: Color(0xFF202124),
                     ),
                     icon: const Icon(
-                      Icons.arrow_drop_down,
+                      Symbols.arrow_drop_down,
                       color: Color(0xFF5F6368),
                     ),
                   ),
@@ -7842,6 +8355,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   // ==================== VIDEO CONTENT ====================
   Widget _buildVideoContent(int index) {
+    final l10n = AppLocalizations.of(context);
     final mediaUrl = _questions[index].mediaUrl;
     final hasVideo = mediaUrl != null && mediaUrl.isNotEmpty;
     final videoId = hasVideo ? _extractYouTubeVideoId(mediaUrl) : null;
@@ -7871,43 +8385,38 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                       constraints: const BoxConstraints(maxHeight: 180),
                       color: const Color(0xFF1A1A1A),
                       child: thumbnailUrl != null
-                          ? Image.network(
-                              thumbnailUrl,
+                          ? SafeImageLoader(
+                              url: thumbnailUrl,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              loadingBuilder: (ctx, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  height: 140,
-                                  color: const Color(0xFF1A1A1A),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: Color(0xFF673AB7),
-                                      strokeWidth: 2,
-                                    ),
+                              loading: Container(
+                                height: 140,
+                                color: const Color(0xFF1A1A1A),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF673AB7),
+                                    strokeWidth: 2,
                                   ),
-                                );
-                              },
-                              errorBuilder: (ctx, error, _) {
-                                return Container(
-                                  height: 140,
-                                  color: const Color(0xFF1A1A1A),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.videocam,
-                                      color: Color(0xFFBDBDBD),
-                                      size: 48,
-                                    ),
+                                ),
+                              ),
+                              fallback: Container(
+                                height: 140,
+                                color: const Color(0xFF1A1A1A),
+                                child: const Center(
+                                  child: Icon(
+                                    Symbols.smart_display,
+                                    color: Color(0xFFBDBDBD),
+                                    size: 48,
                                   ),
-                                );
-                              },
+                                ),
+                              ),
                             )
                           : Container(
                               height: 140,
                               color: const Color(0xFF1A1A1A),
                               child: const Center(
                                 child: Icon(
-                                  Icons.videocam,
+                                  Symbols.smart_display,
                                   color: Color(0xFFBDBDBD),
                                   size: 48,
                                 ),
@@ -7922,8 +8431,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () => _showVideoUrlDialog(index),
-                            icon: const Icon(Icons.edit, size: 16),
-                            label: const Text('Change'),
+                            icon: const Icon(Symbols.edit, size: 16),
+                            label: Text(l10n.change),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF5F6368),
                               side: const BorderSide(color: Color(0xFFDADCE0)),
@@ -7942,8 +8451,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                                 _videoUrlControllers[index].clear();
                               });
                             },
-                            icon: const Icon(Icons.delete_outline, size: 16),
-                            label: const Text('Remove'),
+                            icon: const Icon(Symbols.delete_outline, size: 16),
+                            label: Text(l10n.remove),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFFE53935),
                               side: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -7976,10 +8485,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.add, color: Color(0xFF673AB7), size: 18),
+                    const Icon(Symbols.add, color: Color(0xFF673AB7), size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      'Paste YouTube video URL',
+                      l10n.pasteYouTubeVideoUrl,
                       style: TextStyle(
                         color: const Color(0xFF673AB7),
                         fontSize: 14,
@@ -8040,6 +8549,28 @@ class _PieChartPainter extends CustomPainter {
 }
 
 /// Drag handle listener that requires a 0.6s hold before reorder drag starts.
+/// Keeps off-screen question cards alive to avoid rebuilding TextFields on scroll.
+class _KeepAliveChild extends StatefulWidget {
+  const _KeepAliveChild({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAliveChild> createState() => _KeepAliveChildState();
+}
+
+class _KeepAliveChildState extends State<_KeepAliveChild>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
 class _OneSecondReorderDragStartListener extends ReorderableDragStartListener {
   static const Duration _holdDelay = Duration(milliseconds: 600);
 
@@ -8151,8 +8682,9 @@ class _AddEditorDialogState extends State<_AddEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Add editor'),
+      title: Text(l10n.addEditor),
       content: Form(
         key: _formKey,
         child: TextFormField(
@@ -8160,21 +8692,21 @@ class _AddEditorDialogState extends State<_AddEditorDialog> {
           autofocus: true,
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'Gmail address',
-            hintText: 'name@gmail.com',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: l10n.gmailAddress,
+            hintText: l10n.gmailHint,
+            border: const OutlineInputBorder(),
           ),
           validator: (value) {
             final trimmed = value?.trim() ?? '';
             if (trimmed.isEmpty) {
-              return 'Please enter a Gmail address.';
+              return l10n.enterGmail;
             }
             final emailRegex = RegExp(
               r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
             );
             if (!emailRegex.hasMatch(trimmed)) {
-              return 'Please enter a valid email address.';
+              return l10n.enterValidEmail;
             }
             return null;
           },
@@ -8183,15 +8715,12 @@ class _AddEditorDialogState extends State<_AddEditorDialog> {
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       actions: [
-        TextButton(
-          onPressed: _cancel,
-          child: const Text('Cancel'),
-        ),
+        TextButton(onPressed: _cancel, child: Text(l10n.cancel)),
         TextButton(
           onPressed: _submit,
-          child: const Text(
-            'Add',
-            style: TextStyle(color: Color(0xFF673AB7)),
+          child: Text(
+            l10n.add,
+            style: const TextStyle(color: Color(0xFF673AB7)),
           ),
         ),
       ],

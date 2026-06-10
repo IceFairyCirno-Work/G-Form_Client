@@ -1,5 +1,5 @@
 name: googleform_client
-description: "Forms for Google - A Flutter application for Google Forms."
+description: "Form - A Flutter application for Google Forms."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 0.9.0+1
 
 environment:
   sdk: ^3.12.0
@@ -30,7 +30,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
+  intl: any
+  shared_preferences: ^2.5.3
   google_sign_in: ^6.2.1
   http: ^1.2.0
   image_picker: ^1.1.0
@@ -40,6 +44,7 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^10.1.4
   cached_network_image: ^3.4.1
+  material_symbols_icons: ^4.2928.1
 
 dev_dependencies:
   flutter_test:
@@ -57,20 +62,27 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - assets/
+
   fonts:
-    - family: Inter
+    - family: Roboto
       fonts:
-        - asset: fonts/Inter-Regular.ttf
-        - asset: fonts/Inter-Bold.ttf
-          weight: 700
-        - asset: fonts/Inter-Medium.ttf
+        - asset: fonts/Roboto-Light.ttf
+          weight: 300
+        - asset: fonts/Roboto-Regular.ttf
+          weight: 400
+        - asset: fonts/Roboto-Medium.ttf
           weight: 500
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

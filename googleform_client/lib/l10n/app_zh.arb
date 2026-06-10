@@ -1,0 +1,501 @@
+{
+  "@@locale": "zh",
+  "appName": "Form",
+  "cancel": "取消",
+  "save": "保存",
+  "delete": "删除",
+  "discard": "舍弃",
+  "continueAction": "继续",
+  "done": "完成",
+  "remove": "移除",
+  "add": "添加",
+  "settings": "设置",
+  "close": "关闭",
+  "untitled": "未命名",
+  "open": "打开",
+  "change": "更改",
+  "export": "导出",
+  "publish": "发布",
+  "unlink": "取消关联",
+  "duplicate": "复制",
+  "rename": "重命名",
+  "renameForm": "重命名表单",
+  "enterNewName": "输入新名称",
+  "documentName": "文档名称",
+  "formRenamed": "表单已重命名",
+  "failedToRename": "重命名表单失败",
+  "required": "必填",
+  "optional": "选填",
+  "other": "其他",
+  "description": "说明",
+  "question": "问题",
+  "columns": "列",
+  "rows": "行",
+  "image": "图片",
+  "video": "视频",
+  "owner": "所有者",
+  "loginSubtitle": "随时随地创建和管理表单",
+  "signInWithGoogle": "使用 Google 账号登录",
+  "signInFailed": "登录失败，请重试。",
+  "tabMyForms": "我的表单",
+  "tabTemplates": "模板",
+  "searchForms": "搜索您的表单",
+  "searchTemplates": "搜索模板",
+  "recentForms": "最近的表单",
+  "noRecentForms": "没有最近的表单",
+  "noFormsMatching": "没有符合「{query}」的表单",
+  "@noFormsMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearch": "尝试其他搜索词",
+  "noTemplatesMatching": "没有符合「{query}」的模板",
+  "@noTemplatesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearchOrCategory": "尝试其他搜索词或类别",
+  "thisIsTheEnd": "-已经到底了-",
+  "linkCopiedToClipboard": "链接已复制到剪贴板",
+  "deleteFormTitle": "删除表单？",
+  "deleteFormContent": "此表单将移至回收站。",
+  "formMovedToTrash": "表单已移至回收站",
+  "failedToDeleteForm": "无法删除表单",
+  "duplicatingForm": "正在复制表单…",
+  "formDuplicated": "表单已复制！",
+  "failedToDuplicateForm": "无法复制表单",
+  "templateComingSoon": "模板即将推出！",
+  "loadingTemplate": "正在加载模板…",
+  "failedToLoadTemplate": "无法加载模板，请重试。",
+  "soon": "即将推出",
+  "templateCount": "{count, plural, =1{1 个模板} other{{count} 个模板}}",
+  "@templateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownedByAnyone": "任何人拥有",
+  "ownedByMe": "我拥有的",
+  "notOwnedByMe": "非我拥有的",
+  "lastModified": "最近修改",
+  "lastOpened": "最近打开",
+  "titleAZ": "标题 (A–Z)",
+  "copyLink": "复制链接",
+  "categoryAll": "全部",
+  "categoryWork": "工作",
+  "categoryEducation": "教育",
+  "categoryCommunity": "社区",
+  "categoryHealth": "健康与养生",
+  "tplPrayerRequestSafety": "安全与保护祷告请求",
+  "tplPrayerRequestSafetyDesc": "提交安全与保护的祷告请求",
+  "tplWorkshopEvaluation": "工作坊评估",
+  "tplWorkshopEvaluationDesc": "评估工作坊的效果",
+  "tplSoccerTryoutEvaluation": "足球选拔评估",
+  "tplSoccerTryoutEvaluationDesc": "评估足球选拔表现",
+  "tplOralPresentationEvaluation": "口头演讲评估表",
+  "tplOralPresentationEvaluationDesc": "评估口头演讲技巧",
+  "tplPeerFeedback": "同伴反馈表",
+  "tplPeerFeedbackDesc": "向同伴提供反馈",
+  "tplPresentationFeedback": "演讲反馈",
+  "tplPresentationFeedbackDesc": "对演讲提供反馈",
+  "tplPatientFeedback": "患者反馈表",
+  "tplPatientFeedbackDesc": "收集患者对护理的反馈",
+  "tplChildcareRegistration": "托儿登记表",
+  "tplChildcareRegistrationDesc": "为孩子登记托儿服务",
+  "tplMedicationOrder": "药物订购表",
+  "tplMedicationOrderDesc": "提交药物订单",
+  "tplTeamworkCollaborationEvaluation": "团队合作与协作评估",
+  "tplTeamworkCollaborationEvaluationDesc": "评估团队协作能力",
+  "tplTrainingDevelopmentFeedback": "培训与发展反馈表",
+  "tplTrainingDevelopmentFeedbackDesc": "对培训项目提供反馈",
+  "tplAnnualEmployeePerformanceReview": "年度员工绩效评估",
+  "tplAnnualEmployeePerformanceReviewDesc": "年度员工绩效回顾",
+  "useThisTemplate": "使用此模板",
+  "failedToCopyTemplate": "无法复制模板，请重试。",
+  "untitledForm": "未命名表单",
+  "sectionTitleOf": "第 {n} 小节，共 {total} 小节",
+  "@sectionTitleOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionTitle": "小节标题",
+  "shortAnswerText": "简短回答文字",
+  "longAnswerText": "长段回答文字",
+  "imageTitleOptional": "图片标题（选填）",
+  "videoTitle": "视频标题",
+  "optionLabel": "选项 {n}",
+  "@optionLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "youTubeVideo": "YouTube 视频",
+  "dateFormatWithYear": "MM/DD/YYYY",
+  "dateFormatNoYear": "MM/DD",
+  "timeFormatDuration": "HH:MM:SS",
+  "timeFormatStandard": "HH:MM",
+  "googleAccount": "Google 账号",
+  "signOut": "退出登录",
+  "signOutTitle": "退出登录？",
+  "signOutContent": "确定要退出您的账号吗？",
+  "goPremium": "升级高级版",
+  "goPremiumDesc": "解锁所有功能并移除广告",
+  "about": "关于",
+  "privacyPolicy": "隐私权政策",
+  "termsOfUse": "使用条款",
+  "version": "版本 1.0.0",
+  "language": "语言",
+  "languageSystemDefault": "跟随系统",
+  "languageEnglish": "English",
+  "languageJapanese": "日本語",
+  "languageSimplifiedChinese": "简体中文",
+  "languageTraditionalChinese": "繁體中文",
+  "tabEdit": "编辑",
+  "tabPreview": "预览",
+  "tabResponses": "回复",
+  "tabSettings": "设置",
+  "qTypeMultipleChoice": "单选题",
+  "qTypeCheckboxes": "多选题",
+  "qTypeShortAnswer": "简短回答",
+  "qTypeParagraph": "段落",
+  "qTypeDropdown": "下拉列表",
+  "qTypeImage": "图片",
+  "qTypeVideo": "视频",
+  "qTypeLinearScale": "线性量表",
+  "qTypeMultipleChoiceGrid": "单选网格",
+  "qTypeCheckboxGrid": "多选网格",
+  "qTypeDate": "日期",
+  "qTypeTime": "时间",
+  "qTypeInfo": "标题",
+  "qTypeSection": "小节",
+  "qTypeTitleDescription": "标题和说明",
+  "addQuestion": "添加问题",
+  "addImage": "添加图片",
+  "addVideo": "添加视频",
+  "addInfo": "添加标题",
+  "addSection": "添加小节",
+  "addYouTubeVideo": "添加 YouTube 视频",
+  "pasteYouTubeUrl": "在此粘贴 YouTube 链接",
+  "clickToUploadImage": "点击上传图片",
+  "pasteYouTubeVideoUrl": "粘贴 YouTube 视频链接",
+  "saving": "保存中…",
+  "formSaved": "表单已保存！链接已复制到剪贴板。",
+  "formSavedWithWarnings": "表单已保存！链接已复制。{warnings}",
+  "@formSavedWithWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToSaveForm": "无法保存表单。",
+  "failedToLoadForm": "无法加载表单。",
+  "saveToPreview": "保存以预览",
+  "saveForm": "保存表单",
+  "saveTheFormFirst": "请先保存表单以获取链接",
+  "saveBeforePublishing": "请先保存表单再发布。",
+  "unsavedChanges": "未保存的更改",
+  "unsavedChangesBackDesc": "您有未保存的更改。离开前要保存吗？",
+  "unsavedChangesPreviewDesc": "请保存表单以预览最新的更改。",
+  "dontSave": "不保存",
+  "untitledQuestion": "未命名问题",
+  "formTitle": "表单标题",
+  "formDescription": "表单说明",
+  "addOption": "添加选项",
+  "columnN": "列 {n}",
+  "@columnN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "rowN": "行 {n}",
+  "@rowN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addColumn": "添加列",
+  "addRow": "添加行",
+  "minValue": "最小值",
+  "maxValue": "最大值",
+  "labelOptional": "标签（选填）",
+  "showDescription": "显示说明",
+  "includeYear": "包含年份",
+  "duration": "时长",
+  "tooltipDragToReorder": "拖动以重新排序问题",
+  "tooltipCopyLink": "复制链接",
+  "tooltipPublished": "已发布",
+  "tooltipPublish": "发布",
+  "tooltipSave": "保存",
+  "tooltipDuplicate": "复制",
+  "tooltipDelete": "删除",
+  "tooltipMoreOptions": "更多选项",
+  "tooltipAddImageToQuestion": "在问题中添加图片",
+  "tooltipExportXlsx": "导出为 .xlsx",
+  "tooltipExportCsv": "导出为 .csv",
+  "tooltipOpenLinkedSheet": "打开已关联的 Google 表格",
+  "tooltipLinkToSheet": "关联 Google 表格",
+  "tooltipRemoveEditor": "移除编辑者",
+  "noPreviewAvailable": "没有可用的预览",
+  "noPreviewDesc": "请先保存表单，才能预览回复者看到的样子。",
+  "saveYourFormFirst": "请先保存表单",
+  "needSaveForResponses": "您需要先保存表单才能查看回复。",
+  "noResponsesYet": "还没有回复",
+  "noResponsesDesc": "有人提交您的表单后，回复将显示在这里。",
+  "shareThisForm": "分享此表单",
+  "responseSubSummary": "摘要",
+  "responseSubQuestion": "问题",
+  "responseSubIndividual": "个别",
+  "nResponses": "{count, plural, =1{1 则回复} other{{count} 则回复}}",
+  "@nResponses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswersYet": "还没有回答。",
+  "noGridData": "没有网格数据。",
+  "andNMore": "…以及其他 {n} 个",
+  "@andNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noQuestionsFound": "找不到问题。",
+  "questionLabel": "问题：",
+  "questionN": "问题 {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noResponses": "没有回复。",
+  "responseNOfTotal": "第 {n} 个，共 {total} 个",
+  "@responseNOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "submittedTime": "提交时间：{time}",
+  "@submittedTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "responseN": "回复 {n}",
+  "@responseN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswer": "未回答",
+  "couldNotOpenYouTube": "无法打开 YouTube。",
+  "exportAs": "导出为 {format}",
+  "@exportAs": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "enterFileName": "请输入导出文件名：",
+  "fileName": "文件名",
+  "exportFailed": "导出失败：{error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "responseId": "回复 ID",
+  "createTime": "创建时间",
+  "lastSubmittedTime": "最近提交时间",
+  "responsesSheet": "回复",
+  "exportXlsx": "XLSX",
+  "exportCsv": "CSV",
+  "sheets": "Sheets",
+  "linkedToSheet": "已关联表格",
+  "responsesAutoSaved": "回复会自动保存到此电子表格：",
+  "linkedSpreadsheet": "已关联的电子表格",
+  "tapToOpenInBrowser": "点击在浏览器中打开",
+  "openSheet": "打开表格",
+  "linkToGoogleSheet": "关联 Google 表格",
+  "linkSheetDesc": "表单回复会自动保存到此电子表格。将创建一个包含所有回复的新工作表。",
+  "createAndLink": "创建并关联",
+  "spreadsheetName": "电子表格名称",
+  "unlinkSheetTitle": "取消关联表格？",
+  "unlinkSheetDesc": "新的表单回复将不再保存到此电子表格。表格中现有的回复不会被删除。",
+  "sheetUnlinked": "表格已成功取消关联。",
+  "failedToCreateSheet": "无法创建电子表格，请重试。",
+  "formLinkedToSheet": "表单已成功关联到「{name}」！",
+  "@formLinkedToSheet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLink": "无法关联：{error}",
+  "@failedToLink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUnlink": "无法取消关联：{error}",
+  "@failedToUnlink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorWithMessage": "错误：{message}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "publishRequired": "需要发布",
+  "publishRequiredDesc": "您需要先发布此表单才能接收回复。是否现在发布？",
+  "formPublished": "表单已发布，现在可以接收回复！",
+  "failedToPublish": "无法发布：{error}",
+  "@failedToPublish": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formUnpublished": "表单已取消发布",
+  "formIsPublished": "表单已发布",
+  "copyFormLink": "复制表单链接",
+  "unpublishForm": "取消发布表单",
+  "unpublishFormDesc": "表单将停止接收回复",
+  "settingsResponses": "回复",
+  "settingsPresentation": "呈现方式",
+  "settingsEditors": "编辑者",
+  "acceptResponses": "接受回复",
+  "acceptResponsesEnabled": "用户可以提交此表单的回复",
+  "acceptResponsesDisabled": "此表单目前不接受回复",
+  "collectEmail": "收集电子邮件地址",
+  "collectEmailDesc": "选择收集回复者电子邮件的方式",
+  "dontCollect": "不收集",
+  "verified": "已验证",
+  "responderInput": "回复者输入",
+  "limitToOneResponse": "限制为 1 次回复",
+  "limitToOneResponseDesc": "需要回复者登录",
+  "editAfterSubmit": "提交后可编辑",
+  "editAfterSubmitDesc": "允许回复者在提交后编辑回复",
+  "showProgressBar": "显示进度条",
+  "showProgressBarDesc": "在表单底部显示进度条",
+  "shuffleQuestionOrder": "随机编排问题的顺序",
+  "shuffleQuestionOrderDesc": "每位回复者看到的问题顺序会不同",
+  "confirmationMessage": "确认消息",
+  "confirmationMessageDesc": "表单提交后显示的消息",
+  "enterConfirmationMessage": "输入确认消息",
+  "defaultConfirmationMessage": "您的回复已记录。",
+  "addEditor": "添加编辑者",
+  "gmailAddress": "Gmail 地址",
+  "gmailHint": "name@gmail.com",
+  "enterGmail": "请输入 Gmail 地址。",
+  "enterValidEmail": "请输入有效的电子邮件地址。",
+  "removeEditorTitle": "移除编辑者？",
+  "removeEditorDesc": "确定从此表单移除 {name}？对方将无法再编辑此表单。",
+  "@removeEditorDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyOwner": "您已经是此表单的所有者。",
+  "alreadyOwnerOther": "此用户已经是此表单的所有者。",
+  "alreadyEditor": "此用户已经是此表单的编辑者。",
+  "failedToAddEditor": "无法添加编辑者。",
+  "addedEditor": "已添加 {email} 为编辑者。",
+  "@addedEditor": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotRemoveOwner": "无法移除所有者。",
+  "failedToRemoveEditor": "无法移除编辑者。",
+  "removedEditor": "已移除 {name}。",
+  "@removedEditor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noOwnerFound": "找不到此表单的协作者。",
+  "noEditorsYet": "还没有编辑者。点击 +添加 通过 Gmail 邀请他人。",
+  "noEditorsOnForm": "此表单没有编辑者。",
+  "failedToLoadEditors": "无法加载编辑者。",
+  "saveChangesTitle": "保存更改？",
+  "breakingChangesDesc": "此更改将影响现有的回复：{desc}。\n\n您要继续吗？",
+  "@breakingChangesDesc": {
+    "placeholders": {
+      "desc": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicateChoicesError": "单选题不能有重复的选项。",
+  "invalidDataError": "数据无效，请检查您的表单后重试。",
+  "permissionDeniedError": "权限被拒绝，请检查您的 Google 账号权限。",
+  "addAtLeastOneQuestion": "请在保存前添加至少一个问题。",
+  "failedToUpdateForm": "无法更新表单。",
+  "failedToLoadCurrentForm": "无法加载当前表单数据，请重试。",
+  "couldNotLoadSettings": "无法加载表单设置：{error}",
+  "@couldNotLoadSettings": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "linkCopiedToClipboardExclaim": "链接已复制到剪贴板！",
+  "userFallback": "用户"
+}

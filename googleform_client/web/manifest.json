@@ -1,11 +1,11 @@
 {
-    "name": "Forms for Google",
-    "short_name": "Forms for Google",
+    "name": "Form",
+    "short_name": "Form",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Forms for Google - A Flutter application for Google Forms.",
+    "description": "Form - A Flutter application for Google Forms.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

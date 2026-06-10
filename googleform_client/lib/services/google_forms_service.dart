@@ -221,8 +221,11 @@ class GoogleFormsService {
       }
     }
 
-    // Step 3: Rename file in Google Drive so it shows the correct name
-    final renameErr = await _renameDriveFile(createdForm.formId, form.title);
+    // Step 3: Rename file in Google Drive (documentTitle), independent of info.title
+    final driveName = form.documentTitle?.trim().isNotEmpty == true
+        ? form.documentTitle!.trim()
+        : form.title;
+    final renameErr = await renameDriveFile(createdForm.formId, driveName);
     if (renameErr != null) {
       errors.add('Rename: $renameErr');
     }
@@ -429,8 +432,8 @@ class GoogleFormsService {
     ], label: 'EMAIL_COLLECTION');
   }
 
-  /// Rename a file in Google Drive (to set the document name)
-  Future<String?> _renameDriveFile(String fileId, String newName) async {
+  /// Rename a file in Google Drive (to set the document name / documentTitle).
+  Future<String?> renameDriveFile(String fileId, String newName) async {
     final token = await _authService.getFreshAccessToken();
     if (token == null) return 'No access token';
 
@@ -452,6 +455,33 @@ class GoogleFormsService {
       }
     } catch (e) {
       return 'Drive rename exception: $e';
+    }
+  }
+
+  /// Rename only the Drive file name (documentTitle). Does not change info.title.
+  Future<String?> renameDocumentTitle(String formId, String newName) async {
+    return renameDriveFile(formId, newName);
+  }
+
+  /// Fetch the current Drive file name for a form (source of truth for documentTitle).
+  Future<String?> getDriveFileName(String fileId) async {
+    final token = await _authService.getFreshAccessToken();
+    if (token == null) return null;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_driveBaseUrl/$fileId?fields=name'),
+        headers: _headers(token),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+        return jsonData['name'] as String?;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('getDriveFileName exception: $e');
+      return null;
     }
   }
 
@@ -756,15 +786,7 @@ class GoogleFormsService {
       });
     }
 
-    // 1b. Rename in Drive if title changed
-    if (changes.titleChanged) {
-      final renameErr = await _renameDriveFile(formId, updated.title);
-      if (renameErr != null) {
-        errors.add('Rename: $renameErr');
-      }
-    }
-
-    // 1c. Upload any NEW images to Drive (only for added/updated questions
+    // 1b. Upload any NEW images to Drive (only for added/updated questions
     //     that have a local file path as mediaUrl or embeddedImageUrl)
     final allChangedQuestions = <QuestionItem>[
       ...changes.addedQuestions,
@@ -1106,15 +1128,47 @@ class GoogleFormsService {
     }
   }
 
-  /// List recent forms from Google Drive
+  /// Fetch the Drive thumbnail URL for a single file (e.g. a template form).
+  /// Returns the thumbnail link string, or null on failure.
+  Future<String?> getThumbnailLink(String fileId) async {
+    if (fileId.isEmpty) return null;
+
+    final token = await _authService.getFreshAccessToken();
+    if (token == null) return null;
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_driveBaseUrl/$fileId?fields=thumbnailLink'),
+        headers: _headers(token),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+        return jsonData['thumbnailLink'] as String?;
+      }
+
+      debugPrint('getThumbnailLink error: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('getThumbnailLink exception: $e');
+      return null;
+    }
+  }
+
+  /// List recent forms from Google Drive with pagination support.
   /// [orderBy] Drive API sort key (e.g. 'modifiedByMeTime desc', 'viewedByMeTime desc', 'name')
   /// [ownershipFilter] Filter by ownership: 'anyone' (default), 'me', 'not_me'
-  Future<List<Map<String, String>>> listRecentForms({
+  /// [pageToken] Token for the next page of results (null for first page)
+  /// [pageSize] Number of results per page (max 100, default 20)
+  /// Returns a record with the list of forms and the next page token (null if no more pages).
+  Future<({List<Map<String, String>> forms, String? nextPageToken})> listRecentForms({
     String orderBy = 'modifiedByMeTime desc',
     String ownershipFilter = 'anyone',
+    String? pageToken,
+    int pageSize = 20,
   }) async {
     final token = await _authService.getFreshAccessToken();
-    if (token == null) return [];
+    if (token == null) return (forms: <Map<String, String>>[], nextPageToken: null);
 
     try {
       var queryStr = "mimeType='application/vnd.google-apps.form' and trashed = false";
@@ -1124,30 +1178,39 @@ class GoogleFormsService {
         queryStr += " and not 'me' in owners";
       }
       final query = Uri.encodeQueryComponent(queryStr);
-      final url = '$_driveBaseUrl?q=$query&orderBy=${Uri.encodeQueryComponent(orderBy)}&pageSize=20&fields=files(id,name,modifiedTime,viewedByMeTime,thumbnailLink)';
-      
+      final pageSizeParam = pageSize.clamp(1, 100);
+      var url = '$_driveBaseUrl?q=$query'
+          '&orderBy=${Uri.encodeQueryComponent(orderBy)}'
+          '&pageSize=$pageSizeParam'
+          '&fields=nextPageToken,files(id,name,modifiedTime,viewedByMeTime,thumbnailLink)';
+      if (pageToken != null && pageToken.isNotEmpty) {
+        url += '&pageToken=${Uri.encodeQueryComponent(pageToken)}';
+      }
+
       final response = await http.get(
         Uri.parse(url),
         headers: _headers(token),
       );
 
       if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-        final files = jsonData['files'] as List<dynamic>;
-        return files.map((file) => {
+        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+        final files = (jsonData['files'] as List<dynamic>?) ?? [];
+        final forms = files.map((file) => <String, String>{
           'id': file['id'] as String? ?? '',
           'name': file['name'] as String? ?? 'Untitled',
           'modifiedTime': file['modifiedTime'] as String? ?? '',
           'lastOpenedTime': file['viewedByMeTime'] as String? ?? '',
           'thumbnailLink': file['thumbnailLink'] as String? ?? '',
         }).toList();
+        final nextPageToken = jsonData['nextPageToken'] as String?;
+        return (forms: forms, nextPageToken: nextPageToken);
       } else {
         debugPrint('List forms error: ${response.statusCode}');
-        return [];
+        return (forms: <Map<String, String>>[], nextPageToken: null);
       }
     } catch (e) {
       debugPrint('List forms exception: $e');
-      return [];
+      return (forms: <Map<String, String>>[], nextPageToken: null);
     }
   }
 

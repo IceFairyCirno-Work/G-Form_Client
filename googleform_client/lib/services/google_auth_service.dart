@@ -34,8 +34,13 @@ class GoogleAuthService {
         _accessToken = null;
       }
     });
-    // Try silent sign-in
-    await _googleSignIn.signInSilently();
+    // Try silent sign-in — wrapped in try-catch to prevent crash
+    // when google-services.json is missing or user has never signed in
+    try {
+      await _googleSignIn.signInSilently();
+    } catch (e) {
+      debugPrint('Silent sign-in failed: $e');
+    }
   }
 
   Future<bool> signIn() async {
