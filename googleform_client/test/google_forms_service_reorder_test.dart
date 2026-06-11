@@ -145,7 +145,6 @@ void main() {
       ]);
 
       final changes = service.detectFormChanges(original, updated);
-      expect(changes.hasOrderChanges, isTrue);
       expect(changes.movedQuestionIndices, isNotEmpty);
       expect(changes.updatedQuestions, isEmpty);
 

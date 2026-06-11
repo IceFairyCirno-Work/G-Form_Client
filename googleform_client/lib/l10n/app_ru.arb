@@ -1,0 +1,514 @@
+{
+  "@@locale": "ru",
+  "appName": "Form",
+  "cancel": "Отмена",
+  "save": "Сохранять",
+  "delete": "Удалить",
+  "discard": "Отказаться",
+  "continueAction": "Продолжать",
+  "done": "Сделанный",
+  "remove": "Удалять",
+  "add": "Добавлять",
+  "settings": "Настройки",
+  "close": "Закрывать",
+  "untitled": "Без названия",
+  "open": "Открыть",
+  "change": "Изменять",
+  "export": "Экспорт",
+  "publish": "Публиковать",
+  "unlink": "Отсоединить",
+  "duplicate": "Создать копию",
+  "rename": "Переименовать",
+  "renameForm": "Переименовать",
+  "enterNewName": "Введите новое имя",
+  "documentName": "Название документа",
+  "formRenamed": "Переименовано",
+  "failedToRename": "Не удалось переименовать",
+  "required": "Необходимый",
+  "optional": "Необязательный",
+  "other": "Другой",
+  "description": "Описание",
+  "question": "Вопрос",
+  "columns": "Столбцы",
+  "rows": "Строки",
+  "image": "Изображение",
+  "video": "Видео",
+  "owner": "Владелец",
+  "loginSubtitle": "Создавайте формы и управляйте ими на ходу",
+  "signInWithGoogle": "Войти через Google",
+  "signInFailed": "Войти не удалось. Пожалуйста, попробуйте еще раз.",
+  "tabMyForms": "Мои формы",
+  "tabTemplates": "Галерея шаблонов",
+  "searchForms": "Поиск по вашим формам",
+  "searchTemplates": "Шаблоны поиска",
+  "recentForms": "Недавние формы",
+  "noRecentForms": "Нет недавних элементов",
+  "noFormsMatching": "Нет форм, соответствующих \"{query}\".",
+  "@noFormsMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearch": "Попробуйте другой поисковый запрос",
+  "noTemplatesMatching": "Нет шаблонов, соответствующих \"{query}\".",
+  "@noTemplatesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearchOrCategory": "Попробуйте другой поисковый запрос или категорию",
+  "thisIsTheEnd": "-Это конец-",
+  "linkCopiedToClipboard": "Ссылка скопирована в буфер обмена",
+  "deleteFormTitle": "Переместить в корзину?",
+  "deleteFormContent": "Форма будет перемещена в корзину.",
+  "formMovedToTrash": "Перемещено в корзину",
+  "failedToDeleteForm": "Не удалось удалить форму",
+  "duplicatingForm": "Создание копии…",
+  "formDuplicated": "Копия создана",
+  "failedToDuplicateForm": "Не удалось создать копию",
+  "templateComingSoon": "Шаблон скоро появится!",
+  "loadingTemplate": "Загрузка шаблона...",
+  "failedToLoadTemplate": "Не удалось загрузить шаблон. Пожалуйста, попробуйте еще раз.",
+  "soon": "Скоро",
+  "templateCount": "{count, plural, =1{1 шаблон} other{{count} шаблонов}}",
+  "@templateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownedByAnyone": "Принадлежит кому-либо",
+  "ownedByMe": "Принадлежит мне",
+  "notOwnedByMe": "Не принадлежит мне",
+  "lastModified": "Последнее изменение",
+  "lastOpened": "Последнее открытие мной",
+  "titleAZ": "Название",
+  "copyLink": "Копировать ссылку",
+  "categoryAll": "Все",
+  "categoryWork": "Работа",
+  "categoryEducation": "Образование",
+  "categoryCommunity": "Сообщество",
+  "categoryHealth": "Здоровье и благополучие",
+  "tplPrayerRequestSafety": "Молитвенная просьба о безопасности и защите",
+  "tplPrayerRequestSafetyDesc": "Отправляйте молитвенные просьбы о безопасности и защите",
+  "tplWorkshopEvaluation": "Оценка семинара",
+  "tplWorkshopEvaluationDesc": "Оцените эффективность семинара",
+  "tplSoccerTryoutEvaluation": "Оценка футбольных проб",
+  "tplSoccerTryoutEvaluationDesc": "Оценить результаты футбольных проб",
+  "tplOralPresentationEvaluation": "Форма оценки устной презентации",
+  "tplOralPresentationEvaluationDesc": "Оценить навыки устной презентации.",
+  "tplPeerFeedback": "Форма обратной связи с коллегами",
+  "tplPeerFeedbackDesc": "Предоставляйте обратную связь коллегам",
+  "tplPresentationFeedback": "Обратная связь по презентации",
+  "tplPresentationFeedbackDesc": "Оставляйте отзывы о презентациях",
+  "tplPatientFeedback": "Форма обратной связи с пациентом",
+  "tplPatientFeedbackDesc": "Собирайте отзывы пациентов об уходе",
+  "tplChildcareRegistration": "Регистрационная форма по уходу за детьми",
+  "tplChildcareRegistrationDesc": "Записать детей на услуги по уходу за детьми",
+  "tplMedicationOrder": "Форма заказа лекарств",
+  "tplMedicationOrderDesc": "Отправьте заказ на лекарства",
+  "tplTeamworkCollaborationEvaluation": "Оценка командной работы и сотрудничества",
+  "tplTeamworkCollaborationEvaluationDesc": "Оцените навыки совместной работы в команде",
+  "tplTrainingDevelopmentFeedback": "Форма обратной связи по обучению и развитию",
+  "tplTrainingDevelopmentFeedbackDesc": "Оставить отзыв о программах обучения",
+  "tplAnnualEmployeePerformanceReview": "Ежегодный обзор эффективности работы сотрудников",
+  "tplAnnualEmployeePerformanceReviewDesc": "Ежегодно анализируйте эффективность работы сотрудников",
+  "useThisTemplate": "Используйте этот шаблон",
+  "failedToCopyTemplate": "Не удалось скопировать шаблон. Пожалуйста, попробуйте еще раз.",
+  "untitledForm": "Форма без названия",
+  "sectionTitleOf": "Раздел {n} из {total}",
+  "@sectionTitleOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionTitle": "Название раздела",
+  "shortAnswerText": "Краткий текст ответа",
+  "longAnswerText": "Длинный текст ответа",
+  "imageTitleOptional": "Название изображения (необязательно)",
+  "videoTitle": "Название видео",
+  "optionLabel": "Опция {n}",
+  "@optionLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "youTubeVideo": "видео на YouTube",
+  "dateFormatWithYear": "MM/DD/YYYY",
+  "dateFormatNoYear": "MM/DD",
+  "timeFormatDuration": "HH:MM:SS",
+  "timeFormatStandard": "HH:MM",
+  "googleAccount": "Аккаунт Google",
+  "signOut": "выход",
+  "signOutTitle": "Выход?",
+  "signOutContent": "Вы уверены, что хотите выйти из своей учетной записи?",
+  "goPremium": "Перейти Премиум",
+  "goPremiumDesc": "Разблокируйте все функции и удалите рекламу",
+  "about": "О",
+  "privacyPolicy": "политика конфиденциальности",
+  "termsOfUse": "Условия эксплуатации",
+  "version": "Version 1.0.0",
+  "language": "Язык",
+  "languageSystemDefault": "Система по умолчанию",
+  "languageEnglish": "English",
+  "languageJapanese": "日本語",
+  "languageSimplifiedChinese": "简体中文",
+  "languageTraditionalChinese": "繁體中文",
+  "tabEdit": "Вопросы",
+  "tabPreview": "Предварительный просмотр",
+  "tabResponses": "Ответы",
+  "tabSettings": "Настройки",
+  "qTypeMultipleChoice": "Один из списка",
+  "qTypeCheckboxes": "Несколько из списка",
+  "qTypeShortAnswer": "Текст (строка)",
+  "qTypeParagraph": "Текст (абзац)",
+  "qTypeDropdown": "Падать",
+  "qTypeImage": "Изображение",
+  "qTypeVideo": "Видео",
+  "qTypeLinearScale": "Линейный масштаб",
+  "qTypeMultipleChoiceGrid": "Сетка (множественный выбор)",
+  "qTypeCheckboxGrid": "Сетка флажков",
+  "qTypeDate": "Дата",
+  "qTypeTime": "Время",
+  "qTypeInfo": "Информация",
+  "qTypeSection": "Раздел",
+  "qTypeTitleDescription": "название и описание",
+  "addQuestion": "Добавить вопрос",
+  "addImage": "Добавить изображение",
+  "addVideo": "Добавить видео",
+  "addInfo": "Добавить информацию",
+  "addSection": "Добавить раздел",
+  "addYouTubeVideo": "Добавить видео с YouTube",
+  "pasteYouTubeUrl": "Вставьте ссылку YouTube",
+  "clickToUploadImage": "Нажмите, чтобы загрузить изображение",
+  "pasteYouTubeVideoUrl": "Вставить ссылку YouTube",
+  "saving": "Сохранение...",
+  "formSaved": "Форма сохранена! Ссылка скопирована в буфер обмена.",
+  "formSavedWithWarnings": "Форма сохранена! Ссылка скопирована. {warnings}",
+  "@formSavedWithWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToSaveForm": "Не удалось сохранить форму.",
+  "failedToLoadForm": "Не удалось загрузить форму.",
+  "saveToPreview": "Сохранить для предварительного просмотра",
+  "saveForm": "Сохранить форму",
+  "saveTheFormFirst": "Сначала сохраните форму, чтобы получить ссылку",
+  "saveBeforePublishing": "Пожалуйста, сохраните форму перед публикацией.",
+  "unsavedChanges": "Несохраненные изменения",
+  "unsavedChangesBackDesc": "У вас есть несохраненные изменения. Хотите сохраниться перед отъездом?",
+  "unsavedChangesPreviewDesc": "Сохраните форму, чтобы увидеть последний предварительный просмотр ваших изменений.",
+  "dontSave": "Не сохранять",
+  "untitledQuestion": "Безымянный вопрос",
+  "formTitle": "Название формы",
+  "formDescription": "Описание формы",
+  "addOption": "Добавить вариант",
+  "columnN": "Столбец {n}",
+  "@columnN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "rowN": "Строка {n}",
+  "@rowN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addColumn": "Добавить столбец",
+  "addRow": "Добавить строку",
+  "minValue": "Мин. значение",
+  "maxValue": "Макс. значение",
+  "labelOptional": "Подпись (неobяз.)",
+  "showDescription": "Показать описание",
+  "includeYear": "Включить год",
+  "duration": "Продолжительность",
+  "tooltipDragToReorder": "Перетащите, чтобы изменить порядок вопросов",
+  "tooltipCopyLink": "Копировать ссылку",
+  "tooltipPublished": "Опубликовано",
+  "tooltipPublish": "Публиковать",
+  "tooltipSave": "Сохранять",
+  "tooltipDuplicate": "Создать копию",
+  "tooltipDelete": "Удалить",
+  "tooltipMoreOptions": "Больше возможностей",
+  "tooltipAddImageToQuestion": "Добавить изображение к вопросу",
+  "tooltipExportXlsx": "Экспортировать как .xlsx",
+  "tooltipExportCsv": "Экспортировать в формате .csv",
+  "tooltipOpenLinkedSheet": "Открыть связанный Google Sheet",
+  "tooltipLinkToSheet": "Ссылка на Google Таблицу",
+  "tooltipRemoveEditor": "Удалить редактор",
+  "noPreviewAvailable": "Предварительный просмотр недоступен",
+  "noPreviewDesc": "Сначала сохраните форму, чтобы в реальном времени увидеть, как она выглядит для респондентов.",
+  "saveYourFormFirst": "Сначала сохраните форму",
+  "needSaveForResponses": "Вам необходимо сохранить форму, прежде чем вы сможете просмотреть ответы.",
+  "noResponsesYet": "Пока нет ответов",
+  "noResponsesDesc": "Ответы появятся здесь, как только люди отправят вашу форму.",
+  "shareThisForm": "Поделиться этой формой",
+  "responseSubSummary": "Краткое содержание",
+  "responseSubQuestion": "Вопрос",
+  "responseSubIndividual": "Индивидуальный",
+  "nResponses": "{count, plural, =1{1 ответ} other{{count} ответов}}",
+  "@nResponses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswersYet": "Ответов пока нет.",
+  "noGridData": "Нет данных сетки.",
+  "andNMore": "... и еще {n}",
+  "@andNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noQuestionsFound": "Вопросов не найдено.",
+  "questionLabel": "Вопрос:",
+  "questionN": "Вопрос {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noResponses": "Никаких ответов.",
+  "responseNOfTotal": "{n} из {total}",
+  "@responseNOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "submittedTime": "Отправлено: {time}",
+  "@submittedTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "responseN": "Ответ {n}",
+  "@responseN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswer": "Нет ответа",
+  "couldNotOpenYouTube": "Не удалось открыть YouTube.",
+  "exportAs": "Экспортировать как {format}",
+  "@exportAs": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "enterFileName": "Введите имя файла для экспорта:",
+  "fileName": "Имя файла",
+  "exportFailed": "Не удалось экспортировать: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "responseId": "Идентификатор ответа",
+  "createTime": "Создать время",
+  "lastSubmittedTime": "Время последней отправки",
+  "responsesSheet": "Ответы",
+  "exportXlsx": "XLSX",
+  "exportCsv": "CSV",
+  "sheets": "Sheets",
+  "linkedToSheet": "Связано с листом",
+  "responsesAutoSaved": "Ответы автоматически сохраняются в эту таблицу:",
+  "linkedSpreadsheet": "Связанная таблица",
+  "tapToOpenInBrowser": "Нажмите, чтобы открыть в браузере",
+  "openSheet": "Открыть лист",
+  "linkToGoogleSheet": "Ссылка на Google Таблицу",
+  "linkSheetDesc": "Ответы формы будут автоматически сохранены в этой таблице. Будет создана новая вкладка листа со всеми ответами.",
+  "createAndLink": "Создать и связать",
+  "spreadsheetName": "Имя таблицы",
+  "unlinkSheetTitle": "Отменить связь с листом?",
+  "unlinkSheetDesc": "Новые ответы в форме больше не будут сохраняться в этой таблице. Существующие ответы на листе не будут удалены.",
+  "sheetUnlinked": "Связь с листом успешно отменена.",
+  "failedToCreateSheet": "Не удалось создать таблицу. Пожалуйста, попробуйте еще раз.",
+  "formLinkedToSheet": "Форма, связанная с «{name}», успешно!",
+  "@formLinkedToSheet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLink": "Не удалось установить связь: {error}.",
+  "@failedToLink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUnlink": "Не удалось отменить связь: {error}",
+  "@failedToUnlink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorWithMessage": "Ошибка: {message}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "publishRequired": "Требуется публикация",
+  "publishRequiredDesc": "Вам необходимо опубликовать эту форму, прежде чем она сможет принимать ответы. Хотите опубликовать это сейчас?",
+  "formPublished": "Форма опубликована и принимается ответы!",
+  "failedToPublish": "Не удалось опубликовать: {error}.",
+  "@failedToPublish": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formUnpublished": "Форма не опубликована",
+  "formIsPublished": "Форма опубликована",
+  "copyFormLink": "Скопировать ссылку на форму",
+  "unpublishForm": "Отменить публикацию формы",
+  "unpublishFormDesc": "Форма перестанет принимать ответы",
+  "settingsResponses": "Ответы",
+  "settingsPresentation": "Презентация",
+  "settingsEditors": "Редакторы",
+  "acceptResponses": "Принять ответы",
+  "acceptResponsesEnabled": "Люди могут отправлять ответы в эту форму",
+  "acceptResponsesDisabled": "Эта форма не принимает ответы",
+  "collectEmail": "Соберите адреса электронной почты",
+  "collectEmailDesc": "Выберите, как собирать электронные письма ответчиков",
+  "dontCollect": "Не собирать",
+  "verified": "Проверено",
+  "responderInput": "Ввод ответчика",
+  "limitToOneResponse": "Ограничить до 1 ответа",
+  "limitToOneResponseDesc": "Требует от респондентов входа в систему",
+  "editAfterSubmit": "Редактировать после отправки",
+  "editAfterSubmitDesc": "Разрешить респондентам редактировать свой ответ после отправки",
+  "showProgressBar": "Показать индикатор выполнения",
+  "showProgressBarDesc": "Показывает индикатор выполнения внизу формы.",
+  "shuffleQuestionOrder": "Перемешать порядок вопросов",
+  "shuffleQuestionOrderDesc": "Вопросы будут появляться в разном порядке для каждого отвечающего.",
+  "confirmationMessage": "Подтверждающее сообщение",
+  "confirmationMessageDesc": "Сообщение, отображаемое после отправки формы",
+  "enterConfirmationMessage": "Введите подтверждающее сообщение",
+  "defaultConfirmationMessage": "Ваш ответ учтен.",
+  "addEditor": "Добавить редактор",
+  "gmailAddress": "адрес Gmail",
+  "gmailHint": "name@gmail.com",
+  "enterGmail": "Пожалуйста, введите адрес Gmail.",
+  "enterValidEmail": "Пожалуйста, введите действительный адрес электронной почты.",
+  "removeEditorTitle": "Удалить редактор?",
+  "removeEditorDesc": "Удалить {name} из этой формы? Они больше не смогут его редактировать.",
+  "@removeEditorDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyOwner": "Вы уже являетесь владельцем этой формы.",
+  "alreadyOwnerOther": "Этот пользователь уже является владельцем этой формы.",
+  "alreadyEditor": "Этот пользователь уже является редактором этой формы.",
+  "failedToAddEditor": "Не удалось добавить редактор.",
+  "addedEditor": "Добавлен {email} в качестве редактора.",
+  "@addedEditor": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotRemoveOwner": "Владельца удалить невозможно.",
+  "failedToRemoveEditor": "Не удалось удалить редактор.",
+  "removedEditor": "Удален {name}.",
+  "@removedEditor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noOwnerFound": "Соавторы для этой формы не найдены.",
+  "noEditorsYet": "Редакторов пока нет. Нажмите +Добавить, чтобы пригласить кого-нибудь через Gmail.",
+  "noEditorsOnForm": "В этой форме нет редакторов.",
+  "failedToLoadEditors": "Не удалось загрузить редакторы.",
+  "saveChangesTitle": "Сохранить изменения?",
+  "breakingChangesDesc": "Это изменение повлияет на существующие ответы: {desc}.\n\nВы хотите продолжить?",
+  "@breakingChangesDesc": {
+    "placeholders": {
+      "desc": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicateChoicesError": "В вопросе с несколькими вариантами ответов не может быть дублирования ответов.",
+  "invalidDataError": "Неверные данные. Пожалуйста, проверьте свою форму и повторите попытку.",
+  "permissionDeniedError": "Доступ запрещен. Пожалуйста, проверьте доступ к своей учетной записи Google.",
+  "addAtLeastOneQuestion": "Прежде чем сохранить, добавьте хотя бы один вопрос.",
+  "failedToUpdateForm": "Не удалось обновить форму.",
+  "failedToLoadCurrentForm": "Не удалось загрузить текущие данные формы. Пожалуйста, попробуйте еще раз.",
+  "couldNotLoadSettings": "Не удалось загрузить настройки формы: {error}.",
+  "@couldNotLoadSettings": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "linkCopiedToClipboardExclaim": "Ссылка скопирована в буфер обмена!",
+  "userFallback": "Пользователь",
+  "languagePortugueseBrazil": "Português (Brasil)",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageRussian": "Русский",
+  "languageGerman": "Deutsch",
+  "languageFrench": "Français",
+  "formNoLongerExists": "Эта форма больше не существует или была удалена.",
+  "failedToPickImage": "Не удалось выбрать изображение. Пожалуйста, попробуйте еще раз.",
+  "failedToShareFile": "Не удалось поделиться файлом.",
+  "noInternetConnection": "Нет подключения к интернету",
+  "noInternetConnectionDesc": "Пожалуйста, проверьте настройки сети и попробуйте снова.",
+  "noInternetSaveError": "Нет подключения к интернету. Невозможно сохранить форму.",
+  "noInternetLoadError": "Нет подключения к интернету. Невозможно загрузить форму.",
+  "retry": "Повторить"
+}

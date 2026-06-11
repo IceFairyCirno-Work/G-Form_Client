@@ -5,8 +5,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_fr.dart';
+import 'app_localizations_id.dart';
 import 'app_localizations_ja.dart';
+import 'app_localizations_pt.dart';
+import 'app_localizations_ru.dart';
 import 'app_localizations_zh.dart';
 
 // ignore_for_file: type=lint
@@ -95,8 +100,13 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('de'),
     Locale('en'),
+    Locale('fr'),
+    Locale('id'),
     Locale('ja'),
+    Locale('pt'),
+    Locale('ru'),
     Locale('zh'),
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
@@ -1960,6 +1970,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'User'**
   String get userFallback;
+
+  /// No description provided for @languagePortugueseBrazil.
+  ///
+  /// In en, this message translates to:
+  /// **'Português (Brasil)'**
+  String get languagePortugueseBrazil;
+
+  /// No description provided for @languageIndonesian.
+  ///
+  /// In en, this message translates to:
+  /// **'Bahasa Indonesia'**
+  String get languageIndonesian;
+
+  /// No description provided for @languageRussian.
+  ///
+  /// In en, this message translates to:
+  /// **'Русский'**
+  String get languageRussian;
+
+  /// No description provided for @languageGerman.
+  ///
+  /// In en, this message translates to:
+  /// **'Deutsch'**
+  String get languageGerman;
+
+  /// No description provided for @languageFrench.
+  ///
+  /// In en, this message translates to:
+  /// **'Français'**
+  String get languageFrench;
+
+  /// No description provided for @noInternetConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get noInternetConnection;
+
+  /// No description provided for @noInternetConnectionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check your network settings and try again.'**
+  String get noInternetConnectionDesc;
+
+  /// No description provided for @noInternetSaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Cannot save form.'**
+  String get noInternetSaveError;
+
+  /// No description provided for @noInternetLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Cannot load form.'**
+  String get noInternetLoadError;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @formNoLongerExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This form no longer exists or was deleted.'**
+  String get formNoLongerExists;
+
+  /// No description provided for @failedToPickImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not pick image. Please try again.'**
+  String get failedToPickImage;
+
+  /// No description provided for @failedToShareFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share file.'**
+  String get failedToShareFile;
 }
 
 class _AppLocalizationsDelegate
@@ -1972,8 +2060,16 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'ja', 'zh'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+    'de',
+    'en',
+    'fr',
+    'id',
+    'ja',
+    'pt',
+    'ru',
+    'zh',
+  ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1994,10 +2090,20 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'de':
+      return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'fr':
+      return AppLocalizationsFr();
+    case 'id':
+      return AppLocalizationsId();
     case 'ja':
       return AppLocalizationsJa();
+    case 'pt':
+      return AppLocalizationsPt();
+    case 'ru':
+      return AppLocalizationsRu();
     case 'zh':
       return AppLocalizationsZh();
   }

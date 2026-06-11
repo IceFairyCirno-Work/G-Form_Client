@@ -29,7 +29,6 @@ class FormChangeSummary {
     required this.breakingChangesDescription,
   });
 
-  bool get hasOrderChanges => movedQuestionIndices.isNotEmpty;
 }
 
 /// Whether a new question has enough content to be created via the API.
@@ -944,42 +943,6 @@ class GoogleFormsService {
     };
   }
 
-  /// Fetch raw form JSON and extract settings not parsed by FormModel.fromJson.
-  /// Returns a map with any extra settings found (e.g. shuffleQuestions).
-  Future<Map<String, dynamic>> getFormRawSettings(String formId) async {
-    final token = await _authService.getFreshAccessToken();
-    if (token == null) return {};
-
-    try {
-      final response = await http.get(
-        Uri.parse('$_formsBaseUrl/$formId'),
-        headers: _headers(token),
-      );
-
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-        final settingsJson = jsonData['settings'] as Map<String, dynamic>?;
-        final result = <String, dynamic>{};
-
-        if (settingsJson != null) {
-          // Extract shuffleQuestions if present
-          if (settingsJson.containsKey('shuffleQuestions')) {
-            result['shuffleQuestions'] = settingsJson['shuffleQuestions'];
-          }
-        }
-
-        debugPrint('=== RAW FORM SETTINGS ===');
-        debugPrint('Full settings JSON: $settingsJson');
-        debugPrint('Extracted: $result');
-
-        return result;
-      }
-    } catch (e) {
-      debugPrint('getFormRawSettings error: $e');
-    }
-    return {};
-  }
-
   /// Set the publish settings of a form using the Google Forms API.
   /// Returns null on success, error string on failure.
   Future<Map<String, dynamic>?> setPublishSettings(
@@ -1025,43 +988,6 @@ class GoogleFormsService {
       }
     } catch (e) {
       return {'success': false, 'error': 'setPublishSettings exception: $e'};
-    }
-  }
-
-  /// Get the publish state of a form.
-  /// Returns a map with 'isPublished' and 'isAcceptingResponses', or null on failure.
-  Future<Map<String, dynamic>?> getPublishSettings(String formId) async {
-    final token = await _authService.getFreshAccessToken();
-    if (token == null) return null;
-
-    try {
-      final response = await http.get(
-        Uri.parse('$_formsBaseUrl/$formId'),
-        headers: _headers(token),
-      );
-
-      if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-        final publishSettings =
-            jsonData['publishSettings'] as Map<String, dynamic>?;
-        if (publishSettings != null) {
-          final publishState =
-              publishSettings['publishState'] as Map<String, dynamic>?;
-          if (publishState != null) {
-            return {
-              'isPublished': publishState['isPublished'] as bool? ?? false,
-              'isAcceptingResponses':
-                  publishState['isAcceptingResponses'] as bool? ?? false,
-            };
-          }
-        }
-        // publishSettings not present = legacy form, treat as not published
-        return {'isPublished': false, 'isAcceptingResponses': false};
-      }
-      return null;
-    } catch (e) {
-      debugPrint('getPublishSettings exception: $e');
-      return null;
     }
   }
 
@@ -1115,9 +1041,16 @@ class GoogleFormsService {
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
         final responses = jsonData['responses'] as List<dynamic>? ?? [];
-        return responses
-            .map((r) => FormResponse.fromApiJson(r as Map<String, dynamic>))
-            .toList();
+        final parsed = <FormResponse>[];
+        for (final r in responses) {
+          if (r is! Map<String, dynamic>) continue;
+          try {
+            parsed.add(FormResponse.fromApiJson(r));
+          } catch (e) {
+            debugPrint('Skip malformed response: $e');
+          }
+        }
+        return parsed;
       } else {
         debugPrint('List responses error: ${response.statusCode}');
         return [];
@@ -1315,10 +1248,10 @@ class GoogleFormsService {
       final editors = <FormEditor>[];
 
       for (final raw in permissions) {
-        final permission = FormEditor.fromDrivePermission(
-          raw as Map<String, dynamic>,
-        );
-        if (permission.type != 'user') continue;
+        if (raw is! Map<String, dynamic>) continue;
+        final permissionType = raw['type'] as String? ?? 'user';
+        if (permissionType != 'user') continue;
+        final permission = FormEditor.fromDrivePermission(raw);
         if (permission.email.isEmpty) continue;
 
         if (permission.isOwner) {

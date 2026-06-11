@@ -16,8 +16,6 @@ class TemplateData {
     required this.formId,
     required this.category,
   });
-
-  bool get isComingSoon => formId.isEmpty;
 }
 
 abstract final class TemplateManager {
@@ -125,7 +123,6 @@ abstract final class TemplateManager {
 
   static List<TemplateData> filtered({
     String category = 'all',
-    String searchQuery = '',
   }) {
     var result = templates;
     if (category != 'all') {

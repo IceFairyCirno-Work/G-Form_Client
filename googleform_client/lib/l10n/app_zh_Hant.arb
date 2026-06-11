@@ -1,6 +1,5 @@
 {
   "@@locale": "zh_Hant",
-
   "appName": "Form",
   "cancel": "取消",
   "save": "儲存",
@@ -35,11 +34,9 @@
   "image": "圖片",
   "video": "影片",
   "owner": "擁有者",
-
   "loginSubtitle": "隨時隨地建立同管理表單",
   "signInWithGoogle": "使用 Google 登入",
   "signInFailed": "登入失敗，請再試一次。",
-
   "tabMyForms": "我的表單",
   "tabTemplates": "範本",
   "searchForms": "搜尋你的表單",
@@ -71,13 +68,11 @@
   "lastOpened": "最近開啟",
   "titleAZ": "標題 (A-Z)",
   "copyLink": "複製連結",
-
   "categoryAll": "全部",
   "categoryWork": "工作",
   "categoryEducation": "教育",
   "categoryCommunity": "社群",
   "categoryHealth": "健康與養生",
-
   "tplPrayerRequestSafety": "安全與保護禱告請求",
   "tplPrayerRequestSafetyDesc": "提交安全與保護的禱告請求",
   "tplWorkshopEvaluation": "工作坊評估",
@@ -102,7 +97,6 @@
   "tplTrainingDevelopmentFeedbackDesc": "對培訓計畫提供回饋",
   "tplAnnualEmployeePerformanceReview": "年度員工績效評估",
   "tplAnnualEmployeePerformanceReviewDesc": "年度員工績效回顧",
-
   "useThisTemplate": "使用此範本",
   "failedToCopyTemplate": "無法複製範本，請再試一次。",
   "untitledForm": "未命名表單",
@@ -118,7 +112,6 @@
   "dateFormatNoYear": "MM/DD",
   "timeFormatDuration": "HH:MM:SS",
   "timeFormatStandard": "HH:MM",
-
   "googleAccount": "Google 帳戶",
   "signOut": "登出",
   "signOutTitle": "登出？",
@@ -135,12 +128,10 @@
   "languageJapanese": "日本語",
   "languageSimplifiedChinese": "简体中文",
   "languageTraditionalChinese": "繁體中文",
-
   "tabEdit": "編輯",
   "tabPreview": "預覽",
   "tabResponses": "回覆",
   "tabSettings": "設定",
-
   "qTypeMultipleChoice": "單選按鈕",
   "qTypeCheckboxes": "多選題",
   "qTypeShortAnswer": "簡短答案",
@@ -156,7 +147,6 @@
   "qTypeInfo": "標題",
   "qTypeSection": "版面",
   "qTypeTitleDescription": "標題與說明",
-
   "addQuestion": "新增問題",
   "addImage": "新增圖片",
   "addVideo": "新增影片",
@@ -166,7 +156,6 @@
   "pasteYouTubeUrl": "請在此貼上 YouTube 連結",
   "clickToUploadImage": "點擊上傳圖片",
   "pasteYouTubeVideoUrl": "貼上 YouTube 影片連結",
-
   "saving": "儲存中…",
   "formSaved": "表單已儲存！連結已複製到剪貼簿。",
   "formSavedWithWarnings": "表單已儲存！連結已複製。{warnings}",
@@ -176,12 +165,10 @@
   "saveForm": "儲存表單",
   "saveTheFormFirst": "請先儲存表單以取得連結",
   "saveBeforePublishing": "請先儲存表單再發佈。",
-
   "unsavedChanges": "未儲存的變更",
   "unsavedChangesBackDesc": "你有未儲存的變更。離開前要儲存嗎？",
   "unsavedChangesPreviewDesc": "請儲存表單以預覽最新的變更。",
   "dontSave": "不儲存",
-
   "untitledQuestion": "未命名問題",
   "formTitle": "表單標題",
   "formDescription": "表單說明",
@@ -196,7 +183,6 @@
   "showDescription": "顯示說明",
   "includeYear": "包含年份",
   "duration": "時長",
-
   "tooltipDragToReorder": "拖曳以重新排序問題",
   "tooltipCopyLink": "複製連結",
   "tooltipPublished": "已發佈",
@@ -211,10 +197,8 @@
   "tooltipOpenLinkedSheet": "開啟已連結的 Google 試算表",
   "tooltipLinkToSheet": "連結 Google 試算表",
   "tooltipRemoveEditor": "移除編輯者",
-
   "noPreviewAvailable": "沒有可用的預覽",
   "noPreviewDesc": "請先儲存表單，才能預覽回覆者看到的樣貌。",
-
   "saveYourFormFirst": "請先儲存表單",
   "needSaveForResponses": "你需要先儲存表單才能查看回覆。",
   "noResponsesYet": "還沒有回覆",
@@ -236,7 +220,6 @@
   "responseN": "回覆 {n}",
   "noAnswer": "未回答",
   "couldNotOpenYouTube": "無法開啟 YouTube。",
-
   "exportAs": "匯出為 {format}",
   "enterFileName": "請輸入匯出檔案名稱：",
   "fileName": "檔案名稱",
@@ -248,7 +231,6 @@
   "exportXlsx": "XLSX",
   "exportCsv": "CSV",
   "sheets": "Sheets",
-
   "linkedToSheet": "已連結試算表",
   "responsesAutoSaved": "回覆會自動儲存到此試算表：",
   "linkedSpreadsheet": "已連結的試算表",
@@ -266,7 +248,6 @@
   "failedToLink": "無法連結：{error}",
   "failedToUnlink": "無法取消連結：{error}",
   "errorWithMessage": "錯誤：{message}",
-
   "publishRequired": "需要發佈",
   "publishRequiredDesc": "你需要先發佈此表單才能接收回覆。你想現在發佈嗎？",
   "formPublished": "表單已發佈，現在可以接收回覆！",
@@ -276,7 +257,6 @@
   "copyFormLink": "複製表單連結",
   "unpublishForm": "取消發佈表單",
   "unpublishFormDesc": "表單將停止接收回覆",
-
   "settingsResponses": "回覆",
   "settingsPresentation": "呈現方式",
   "settingsEditors": "編輯者",
@@ -300,7 +280,6 @@
   "confirmationMessageDesc": "表單提交後顯示的訊息",
   "enterConfirmationMessage": "輸入確認訊息",
   "defaultConfirmationMessage": "你的回覆已記錄。",
-
   "addEditor": "新增編輯者",
   "gmailAddress": "Gmail 地址",
   "gmailHint": "name@gmail.com",
@@ -320,10 +299,8 @@
   "noEditorsYet": "還沒有編輯者。點擊 +新增 以透過 Gmail 邀請他人。",
   "noEditorsOnForm": "此表單沒有編輯者。",
   "failedToLoadEditors": "無法載入編輯者。",
-
   "saveChangesTitle": "儲存變更？",
   "breakingChangesDesc": "此變更將影響現有的回覆：{desc}。\n\n你要繼續嗎？",
-
   "duplicateChoicesError": "單選按鈕不能有重複的選項。",
   "invalidDataError": "資料無效，請檢查你的表單後再試一次。",
   "permissionDeniedError": "權限被拒絕，請檢查你的 Google 帳戶權限。",
@@ -332,6 +309,18 @@
   "failedToLoadCurrentForm": "無法載入目前表單資料，請再試一次。",
   "couldNotLoadSettings": "無法載入表單設定：{error}",
   "linkCopiedToClipboardExclaim": "連結已複製到剪貼簿！",
-
-  "userFallback": "用戶"
+  "userFallback": "用戶",
+  "languagePortugueseBrazil": "Português (Brasil)",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageRussian": "Русский",
+  "languageGerman": "Deutsch",
+  "languageFrench": "Français",
+  "formNoLongerExists": "此表單已不存在或已被刪除。",
+  "failedToPickImage": "無法選擇圖片，請再試一次。",
+  "failedToShareFile": "無法分享檔案。",
+  "noInternetConnection": "沒有網路連線",
+  "noInternetConnectionDesc": "請檢查您的網路設定，然後重試。",
+  "noInternetSaveError": "沒有網路連線，無法儲存表單。",
+  "noInternetLoadError": "沒有網路連線，無法載入表單。",
+  "retry": "重試"
 }

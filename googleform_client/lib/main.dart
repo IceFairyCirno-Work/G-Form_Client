@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:googleform_client/l10n/app_localizations.dart';
 import 'services/google_auth_service.dart';
 import 'services/locale_service.dart';
+import 'services/connectivity_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'utils/app_icons.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
   };
 
   await LocaleService.instance.initialize();
+  ConnectivityService().initialize();
   runApp(const MyApp());
 }
 
@@ -40,7 +42,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final GoogleAuthService _authService = GoogleAuthService();
   final LocaleService _localeService = LocaleService.instance;
   bool _initialized = false;
@@ -48,14 +50,23 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initApp();
     _localeService.localeNotifier.addListener(_onLocaleChanged);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _localeService.localeNotifier.removeListener(_onLocaleChanged);
     super.dispose();
+  }
+
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    if (_localeService.followsSystem && mounted) {
+      setState(() {});
+    }
   }
 
   void _onLocaleChanged() {
@@ -80,10 +91,13 @@ class _MyAppState extends State<MyApp> {
     return ListenableBuilder(
       listenable: _localeService.localeNotifier,
       builder: (context, _) {
+        // Always pass a concrete locale. Passing `null` after a fixed locale
+        // (e.g. fr) can leave MaterialApp stuck on the previous language.
+        final resolvedLocale = _localeService.activeLocale();
         return MaterialApp(
           title: 'Form',
           debugShowCheckedModeBanner: false,
-          locale: _localeService.localeNotifier.value,
+          locale: resolvedLocale,
           localeResolutionCallback: (deviceLocale, supportedLocales) {
             return _localeService.resolveLocale(deviceLocale);
           },

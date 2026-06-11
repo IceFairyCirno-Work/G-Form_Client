@@ -1,0 +1,514 @@
+{
+  "@@locale": "fr",
+  "appName": "Form",
+  "cancel": "Annuler",
+  "save": "Sauvegarder",
+  "delete": "Supprimer",
+  "discard": "Jeter",
+  "continueAction": "Continuer",
+  "done": "Fait",
+  "remove": "Retirer",
+  "add": "Ajouter",
+  "settings": "Paramètres",
+  "close": "Fermer",
+  "untitled": "Sans titre",
+  "open": "Ouvrir",
+  "change": "Changement",
+  "export": "Exporter",
+  "publish": "Publier",
+  "unlink": "Dissocier",
+  "duplicate": "Créer une copie",
+  "rename": "Renommer",
+  "renameForm": "Renommer",
+  "enterNewName": "Entrez un nouveau nom",
+  "documentName": "Nom du document",
+  "formRenamed": "Renommé",
+  "failedToRename": "Échec du renommage",
+  "required": "Requis",
+  "optional": "Facultatif",
+  "other": "Autre",
+  "description": "Description",
+  "question": "Question",
+  "columns": "Colonnes",
+  "rows": "Lignes",
+  "image": "Image",
+  "video": "Vidéo",
+  "owner": "Propriétaire",
+  "loginSubtitle": "Créez et gérez des formulaires en déplacement",
+  "signInWithGoogle": "Connectez-vous avec Google",
+  "signInFailed": "Échec de la connexion. Veuillez réessayer.",
+  "tabMyForms": "Mes formulaires",
+  "tabTemplates": "Galerie de modèles",
+  "searchForms": "Recherchez vos formulaires",
+  "searchTemplates": "Modèles de recherche",
+  "recentForms": "Formulaires récents",
+  "noRecentForms": "Aucun élément récent",
+  "noFormsMatching": "Aucun formulaire correspondant à \"{query}\"",
+  "@noFormsMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearch": "Essayez un autre terme de recherche",
+  "noTemplatesMatching": "Aucun modèle correspondant à \"{query}\"",
+  "@noTemplatesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearchOrCategory": "Essayez un autre terme de recherche ou une autre catégorie",
+  "thisIsTheEnd": "-C'est la fin-",
+  "linkCopiedToClipboard": "Lien copié dans le presse-papier",
+  "deleteFormTitle": "Placer dans la corbeille ?",
+  "deleteFormContent": "Ce formulaire sera placé dans la corbeille.",
+  "formMovedToTrash": "Placé dans la corbeille",
+  "failedToDeleteForm": "Échec de la suppression du formulaire",
+  "duplicatingForm": "Création d'une copie…",
+  "formDuplicated": "Copie créée",
+  "failedToDuplicateForm": "Impossible de créer une copie",
+  "templateComingSoon": "Modèle à venir !",
+  "loadingTemplate": "Chargement du modèle...",
+  "failedToLoadTemplate": "Échec du chargement du modèle. Veuillez réessayer.",
+  "soon": "Bientôt",
+  "templateCount": "{count, plural, =1{1 modèle} other{{count} modèles}}",
+  "@templateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownedByAnyone": "Possédé par n'importe qui",
+  "ownedByMe": "Possédé par moi",
+  "notOwnedByMe": "Ne m'appartient pas",
+  "lastModified": "Modifié",
+  "lastOpened": "Dernière ouverture par moi",
+  "titleAZ": "Nom",
+  "copyLink": "Copier le lien",
+  "categoryAll": "Tous",
+  "categoryWork": "Travail",
+  "categoryEducation": "Éducation",
+  "categoryCommunity": "Communauté",
+  "categoryHealth": "Santé et bien-être",
+  "tplPrayerRequestSafety": "Demande de prière pour la sécurité et la protection",
+  "tplPrayerRequestSafetyDesc": "Soumettez des demandes de prière pour la sécurité et la protection",
+  "tplWorkshopEvaluation": "Évaluation de l'atelier",
+  "tplWorkshopEvaluationDesc": "Évaluer l’efficacité de l’atelier",
+  "tplSoccerTryoutEvaluation": "Évaluation des essais de football",
+  "tplSoccerTryoutEvaluationDesc": "Évaluer les performances aux essais de football",
+  "tplOralPresentationEvaluation": "Formulaire d'évaluation de la présentation orale",
+  "tplOralPresentationEvaluationDesc": "Évaluer les compétences en présentation orale",
+  "tplPeerFeedback": "Formulaire de commentaires des pairs",
+  "tplPeerFeedbackDesc": "Fournir des commentaires aux pairs",
+  "tplPresentationFeedback": "Commentaires sur la présentation",
+  "tplPresentationFeedbackDesc": "Donner des commentaires sur les présentations",
+  "tplPatientFeedback": "Formulaire de commentaires des patients",
+  "tplPatientFeedbackDesc": "Recueillir les commentaires des patients sur les soins",
+  "tplChildcareRegistration": "Formulaire d'inscription pour la garde d'enfants",
+  "tplChildcareRegistrationDesc": "Inscrire les enfants aux services de garde",
+  "tplMedicationOrder": "Formulaire de commande de médicaments",
+  "tplMedicationOrderDesc": "Soumettre les commandes de médicaments",
+  "tplTeamworkCollaborationEvaluation": "Évaluation du travail d'équipe et de la collaboration",
+  "tplTeamworkCollaborationEvaluationDesc": "Évaluer les compétences de collaboration en équipe",
+  "tplTrainingDevelopmentFeedback": "Formulaire de commentaires sur la formation et le développement",
+  "tplTrainingDevelopmentFeedbackDesc": "Fournir des commentaires sur les programmes de formation",
+  "tplAnnualEmployeePerformanceReview": "Évaluation annuelle du rendement des employés",
+  "tplAnnualEmployeePerformanceReviewDesc": "Évaluer le rendement des employés chaque année",
+  "useThisTemplate": "Utilisez ce modèle",
+  "failedToCopyTemplate": "Échec de la copie du modèle. Veuillez réessayer.",
+  "untitledForm": "Formulaire sans titre",
+  "sectionTitleOf": "Section {n} de {total}",
+  "@sectionTitleOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionTitle": "Titre de la section",
+  "shortAnswerText": "Texte de réponse court",
+  "longAnswerText": "Texte de réponse long",
+  "imageTitleOptional": "Titre de l'image (facultatif)",
+  "videoTitle": "Titre de la vidéo",
+  "optionLabel": "Option {n}",
+  "@optionLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "youTubeVideo": "Vidéo YouTube",
+  "dateFormatWithYear": "MM/DD/YYYY",
+  "dateFormatNoYear": "MM/DD",
+  "timeFormatDuration": "HH:MM:SS",
+  "timeFormatStandard": "HH:MM",
+  "googleAccount": "Compte Google",
+  "signOut": "se déconnecter",
+  "signOutTitle": "Se déconnecter?",
+  "signOutContent": "Êtes-vous sûr de vouloir vous déconnecter de votre compte ?",
+  "goPremium": "Passez à la version premium",
+  "goPremiumDesc": "Débloquez toutes les fonctionnalités et supprimez les publicités",
+  "about": "À propos",
+  "privacyPolicy": "politique de confidentialité",
+  "termsOfUse": "Conditions d'utilisation",
+  "version": "Version 1.0.0",
+  "language": "Langue",
+  "languageSystemDefault": "Valeur par défaut du système",
+  "languageEnglish": "English",
+  "languageJapanese": "日本語",
+  "languageSimplifiedChinese": "简体中文",
+  "languageTraditionalChinese": "繁體中文",
+  "tabEdit": "Modifier",
+  "tabPreview": "Aperçu",
+  "tabResponses": "Réponses",
+  "tabSettings": "Paramètres",
+  "qTypeMultipleChoice": "Choix multiple",
+  "qTypeCheckboxes": "Cases à cocher",
+  "qTypeShortAnswer": "Réponse courte",
+  "qTypeParagraph": "Paragraphe",
+  "qTypeDropdown": "Dérouler",
+  "qTypeImage": "Image",
+  "qTypeVideo": "Vidéo",
+  "qTypeLinearScale": "Échelle linéaire",
+  "qTypeMultipleChoiceGrid": "Grille à choix multiples",
+  "qTypeCheckboxGrid": "Grille de cases à cocher",
+  "qTypeDate": "Date",
+  "qTypeTime": "Temps",
+  "qTypeInfo": "Informations",
+  "qTypeSection": "Section",
+  "qTypeTitleDescription": "titre et une description",
+  "addQuestion": "Ajouter une question",
+  "addImage": "Ajouter une image",
+  "addVideo": "Ajouter une vidéo",
+  "addInfo": "Ajouter des informations",
+  "addSection": "Ajouter une rubrique",
+  "addYouTubeVideo": "Ajouter une vidéo YouTube",
+  "pasteYouTubeUrl": "Collez l'URL YouTube ici",
+  "clickToUploadImage": "Cliquez pour télécharger l'image",
+  "pasteYouTubeVideoUrl": "Coller l'URL de la vidéo YouTube",
+  "saving": "Économie...",
+  "formSaved": "Formulaire enregistré ! Lien copié dans le presse-papiers.",
+  "formSavedWithWarnings": "Formulaire enregistré ! Lien copié. {warnings}",
+  "@formSavedWithWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToSaveForm": "Échec de l'enregistrement du formulaire.",
+  "failedToLoadForm": "Échec du chargement du formulaire.",
+  "saveToPreview": "Enregistrer pour prévisualiser",
+  "saveForm": "Enregistrer le formulaire",
+  "saveTheFormFirst": "Enregistrez d'abord le formulaire pour obtenir un lien",
+  "saveBeforePublishing": "Veuillez enregistrer le formulaire avant de le publier.",
+  "unsavedChanges": "Modifications non enregistrées",
+  "unsavedChangesBackDesc": "Vous avez des modifications non enregistrées. Vous souhaitez économiser avant de partir ?",
+  "unsavedChangesPreviewDesc": "Enregistrez votre formulaire pour voir le dernier aperçu de vos modifications.",
+  "dontSave": "Ne sauvegardez pas",
+  "untitledQuestion": "Question sans titre",
+  "formTitle": "Titre du formulaire",
+  "formDescription": "Description du formulaire",
+  "addOption": "Ajouter une option",
+  "columnN": "Colonne {n}",
+  "@columnN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "rowN": "Ligne {n}",
+  "@rowN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addColumn": "Ajouter une colonne",
+  "addRow": "Ajouter une ligne",
+  "minValue": "Valeur minimale",
+  "maxValue": "Valeur maximale",
+  "labelOptional": "Étiquette (facultatif)",
+  "showDescription": "Afficher la description",
+  "includeYear": "Inclure l'année",
+  "duration": "Durée",
+  "tooltipDragToReorder": "Faites glisser pour réorganiser la question",
+  "tooltipCopyLink": "Copier le lien",
+  "tooltipPublished": "Publié",
+  "tooltipPublish": "Publier",
+  "tooltipSave": "Sauvegarder",
+  "tooltipDuplicate": "Créer une copie",
+  "tooltipDelete": "Supprimer",
+  "tooltipMoreOptions": "Plus d'options",
+  "tooltipAddImageToQuestion": "Ajouter une image à la question",
+  "tooltipExportXlsx": "Exporter au format .xlsx",
+  "tooltipExportCsv": "Exporter au format .csv",
+  "tooltipOpenLinkedSheet": "Ouvrir la feuille Google liée",
+  "tooltipLinkToSheet": "Lien vers la feuille Google",
+  "tooltipRemoveEditor": "Supprimer l'éditeur",
+  "noPreviewAvailable": "Aucun aperçu disponible",
+  "noPreviewDesc": "Enregistrez d’abord votre formulaire pour voir un aperçu en direct de son apparence pour les répondants.",
+  "saveYourFormFirst": "Enregistrez d'abord votre formulaire",
+  "needSaveForResponses": "Vous devez enregistrer votre formulaire avant de pouvoir afficher les réponses.",
+  "noResponsesYet": "Pas encore de réponses",
+  "noResponsesDesc": "Les réponses apparaîtront ici une fois que les gens auront soumis votre formulaire.",
+  "shareThisForm": "Partager ce formulaire",
+  "responseSubSummary": "Résumé",
+  "responseSubQuestion": "Question",
+  "responseSubIndividual": "Individuel",
+  "nResponses": "{count, plural, =1{1 réponse} other{{count} réponses}}",
+  "@nResponses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswersYet": "Pas encore de réponses.",
+  "noGridData": "Aucune donnée de grille.",
+  "andNMore": "... et {n} plus",
+  "@andNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noQuestionsFound": "Aucune question trouvée.",
+  "questionLabel": "Question:",
+  "questionN": "Question {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noResponses": "Aucune réponse.",
+  "responseNOfTotal": "{n} de {total}",
+  "@responseNOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "submittedTime": "Soumis : {time}",
+  "@submittedTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "responseN": "Réponse {n}",
+  "@responseN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswer": "Pas de réponse",
+  "couldNotOpenYouTube": "Impossible d'ouvrir YouTube.",
+  "exportAs": "Exporter sous {format}",
+  "@exportAs": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "enterFileName": "Saisissez un nom de fichier pour l'exportation :",
+  "fileName": "Nom de fichier",
+  "exportFailed": "Échec de l'exportation : {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "responseId": "ID de réponse",
+  "createTime": "Créer du temps",
+  "lastSubmittedTime": "Heure de la dernière soumission",
+  "responsesSheet": "Réponses",
+  "exportXlsx": "XLSX",
+  "exportCsv": "CSV",
+  "sheets": "Sheets",
+  "linkedToSheet": "Lié à la feuille",
+  "responsesAutoSaved": "Les réponses sont automatiquement enregistrées dans cette feuille de calcul :",
+  "linkedSpreadsheet": "Feuille de calcul liée",
+  "tapToOpenInBrowser": "Appuyez pour ouvrir dans le navigateur",
+  "openSheet": "Feuille ouverte",
+  "linkToGoogleSheet": "Lien vers la feuille Google",
+  "linkSheetDesc": "Les réponses au formulaire seront automatiquement enregistrées dans cette feuille de calcul. Un nouvel onglet de feuille sera créé avec toutes les réponses.",
+  "createAndLink": "Créer et lier",
+  "spreadsheetName": "Nom de la feuille de calcul",
+  "unlinkSheetTitle": "Dissocier la feuille ?",
+  "unlinkSheetDesc": "Les nouvelles réponses au formulaire ne seront plus enregistrées dans cette feuille de calcul. Les réponses existantes dans la feuille ne seront pas supprimées.",
+  "sheetUnlinked": "Feuille dissociée avec succès.",
+  "failedToCreateSheet": "Échec de la création de la feuille de calcul. Veuillez réessayer.",
+  "formLinkedToSheet": "Formulaire lié à \"{name}\" avec succès !",
+  "@formLinkedToSheet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLink": "Échec de l'association : {error}",
+  "@failedToLink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUnlink": "Échec de la dissociation : {error}",
+  "@failedToUnlink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorWithMessage": "Erreur : {message}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "publishRequired": "Publication obligatoire",
+  "publishRequiredDesc": "Vous devez publier ce formulaire avant de pouvoir accepter les réponses. Souhaitez-vous le publier maintenant ?",
+  "formPublished": "Formulaire publié et j'accepte maintenant les réponses !",
+  "failedToPublish": "Échec de la publication : {error}",
+  "@failedToPublish": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formUnpublished": "Formulaire inédit",
+  "formIsPublished": "Le formulaire est publié",
+  "copyFormLink": "Copier le lien du formulaire",
+  "unpublishForm": "Formulaire de dépublication",
+  "unpublishFormDesc": "Le formulaire cessera d'accepter les réponses",
+  "settingsResponses": "Réponses",
+  "settingsPresentation": "Présentation",
+  "settingsEditors": "Éditeurs",
+  "acceptResponses": "Accepter les réponses",
+  "acceptResponsesEnabled": "Les gens peuvent soumettre des réponses à ce formulaire",
+  "acceptResponsesDisabled": "Ce formulaire n'accepte pas de réponses",
+  "collectEmail": "Collecter des adresses e-mail",
+  "collectEmailDesc": "Choisissez comment collecter les e-mails des répondeurs",
+  "dontCollect": "Ne collectez pas",
+  "verified": "Vérifié",
+  "responderInput": "Informations saisies par le participant",
+  "limitToOneResponse": "Limité à 1 réponse",
+  "limitToOneResponseDesc": "Nécessite que les intervenants se connectent",
+  "editAfterSubmit": "Modifier après soumission",
+  "editAfterSubmitDesc": "Autoriser les répondants à modifier leur réponse après l'envoi",
+  "showProgressBar": "Afficher la barre de progression",
+  "showProgressBarDesc": "Affiche une barre de progression au bas du formulaire",
+  "shuffleQuestionOrder": "Mélanger l'ordre des questions",
+  "shuffleQuestionOrderDesc": "Les questions apparaîtront dans un ordre différent pour chaque répondant",
+  "confirmationMessage": "Message de confirmation",
+  "confirmationMessageDesc": "Message affiché après la soumission du formulaire",
+  "enterConfirmationMessage": "Entrez le message de confirmation",
+  "defaultConfirmationMessage": "Votre réponse a été enregistrée.",
+  "addEditor": "Ajouter un éditeur",
+  "gmailAddress": "Adresse Gmail",
+  "gmailHint": "name@gmail.com",
+  "enterGmail": "Veuillez saisir une adresse Gmail.",
+  "enterValidEmail": "S'il vous plaît, mettez une adresse email valide.",
+  "removeEditorTitle": "Supprimer l'éditeur ?",
+  "removeEditorDesc": "Supprimer {name} de ce formulaire ? Ils ne pourront plus le modifier.",
+  "@removeEditorDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyOwner": "Vous êtes déjà propriétaire de ce formulaire.",
+  "alreadyOwnerOther": "Cet utilisateur est déjà propriétaire de ce formulaire.",
+  "alreadyEditor": "Cet utilisateur est déjà éditeur sur ce formulaire.",
+  "failedToAddEditor": "Échec de l'ajout de l'éditeur.",
+  "addedEditor": "Ajout de {email} en tant qu'éditeur.",
+  "@addedEditor": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotRemoveOwner": "Le propriétaire ne peut pas être supprimé.",
+  "failedToRemoveEditor": "Échec de la suppression de l'éditeur.",
+  "removedEditor": "{name} supprimé.",
+  "@removedEditor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noOwnerFound": "Aucun collaborateur trouvé pour ce formulaire.",
+  "noEditorsYet": "Aucun éditeur pour l'instant. Appuyez sur +Ajouter pour inviter quelqu'un via Gmail.",
+  "noEditorsOnForm": "Aucun éditeur sur ce formulaire.",
+  "failedToLoadEditors": "Échec du chargement des éditeurs.",
+  "saveChangesTitle": "Enregistrer les modifications ?",
+  "breakingChangesDesc": "Ce changement affectera les réponses existantes : {desc}.\n\nVoulez-vous continuer ?",
+  "@breakingChangesDesc": {
+    "placeholders": {
+      "desc": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicateChoicesError": "Vous ne pouvez pas avoir de choix en double dans une question à choix multiples.",
+  "invalidDataError": "Données invalides. Veuillez vérifier votre formulaire et réessayer.",
+  "permissionDeniedError": "Autorisation refusée. Veuillez vérifier l'accès à votre compte Google.",
+  "addAtLeastOneQuestion": "Veuillez ajouter au moins une question avant de sauvegarder.",
+  "failedToUpdateForm": "Échec de la mise à jour du formulaire.",
+  "failedToLoadCurrentForm": "Échec du chargement des données actuelles du formulaire. Veuillez réessayer.",
+  "couldNotLoadSettings": "Impossible de charger les paramètres du formulaire : {error}",
+  "@couldNotLoadSettings": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "linkCopiedToClipboardExclaim": "Lien copié dans le presse-papier !",
+  "userFallback": "Utilisateur",
+  "languagePortugueseBrazil": "Português (Brasil)",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageRussian": "Русский",
+  "languageGerman": "Deutsch",
+  "languageFrench": "Français",
+  "formNoLongerExists": "Ce formulaire n'existe plus ou a été supprimé.",
+  "failedToPickImage": "Impossible de sélectionner l'image. Veuillez réessayer.",
+  "failedToShareFile": "Impossible de partager le fichier.",
+  "noInternetConnection": "Pas de connexion Internet",
+  "noInternetConnectionDesc": "Veuillez vérifier vos paramètres réseau et réessayer.",
+  "noInternetSaveError": "Pas de connexion Internet. Impossible d'enregistrer le formulaire.",
+  "noInternetLoadError": "Pas de connexion Internet. Impossible de charger le formulaire.",
+  "retry": "Réessayer"
+}

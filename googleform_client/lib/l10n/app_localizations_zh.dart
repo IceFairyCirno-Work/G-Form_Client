@@ -1001,6 +1001,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get userFallback => '用户';
+
+  @override
+  String get languagePortugueseBrazil => 'Português (Brasil)';
+
+  @override
+  String get languageIndonesian => 'Bahasa Indonesia';
+
+  @override
+  String get languageRussian => 'Русский';
+
+  @override
+  String get languageGerman => 'Deutsch';
+
+  @override
+  String get languageFrench => 'Français';
+
+  @override
+  String get noInternetConnection => '无网络连接';
+
+  @override
+  String get noInternetConnectionDesc => '请检查您的网络设置，然后重试。';
+
+  @override
+  String get noInternetSaveError => '无网络连接，无法保存表单。';
+
+  @override
+  String get noInternetLoadError => '无网络连接，无法加载表单。';
+
+  @override
+  String get retry => '重试';
+
+  @override
+  String get formNoLongerExists => '此表单已不存在或已被删除。';
+
+  @override
+  String get failedToPickImage => '无法选择图片，请重试。';
+
+  @override
+  String get failedToShareFile => '无法分享文件。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -2000,4 +2039,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get userFallback => '用戶';
+
+  @override
+  String get languagePortugueseBrazil => 'Português (Brasil)';
+
+  @override
+  String get languageIndonesian => 'Bahasa Indonesia';
+
+  @override
+  String get languageRussian => 'Русский';
+
+  @override
+  String get languageGerman => 'Deutsch';
+
+  @override
+  String get languageFrench => 'Français';
+
+  @override
+  String get noInternetConnection => '沒有網路連線';
+
+  @override
+  String get noInternetConnectionDesc => '請檢查您的網路設定，然後重試。';
+
+  @override
+  String get noInternetSaveError => '沒有網路連線，無法儲存表單。';
+
+  @override
+  String get noInternetLoadError => '沒有網路連線，無法載入表單。';
+
+  @override
+  String get retry => '重試';
+
+  @override
+  String get formNoLongerExists => '此表單已不存在或已被刪除。';
+
+  @override
+  String get failedToPickImage => '無法選擇圖片，請再試一次。';
+
+  @override
+  String get failedToShareFile => '無法分享檔案。';
 }

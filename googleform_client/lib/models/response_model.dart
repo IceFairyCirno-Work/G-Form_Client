@@ -1,12 +1,10 @@
 class Answer {
   final String questionId;
   final List<String> textAnswers;
-  final String? fileId;
 
   Answer({
     required this.questionId,
     this.textAnswers = const [],
-    this.fileId,
   });
 
   factory Answer.fromApiJson(String qId, Map<String, dynamic> json) {
@@ -40,7 +38,12 @@ class FormResponse {
     final answersMap = <String, Answer>{};
     final answers = json['answers'] as Map<String, dynamic>? ?? {};
     answers.forEach((key, value) {
-      answersMap[key] = Answer.fromApiJson(key, value as Map<String, dynamic>);
+      if (value is! Map<String, dynamic>) return;
+      try {
+        answersMap[key] = Answer.fromApiJson(key, value);
+      } catch (_) {
+        // Skip malformed answers instead of crashing the whole parse.
+      }
     });
 
     return FormResponse(

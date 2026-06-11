@@ -1,5 +1,3 @@
-import 'dart:core';
-
 enum QuestionType {
   multipleChoice,
   checkbox,
@@ -39,7 +37,6 @@ class QuestionItem {
 
   // Date fields
   bool dateIncludeYear;
-  bool dateIncludeTime;
 
   // Time fields
   bool timeDuration;
@@ -67,7 +64,6 @@ class QuestionItem {
     List<String>? gridColumns,
     List<String>? gridRowQuestionIds,
     this.dateIncludeYear = true,
-    this.dateIncludeTime = false,
     this.timeDuration = false,
     this.isOther = false,
     this.description,
@@ -131,10 +127,11 @@ class QuestionItem {
       type == QuestionType.checkbox ||
       type == QuestionType.dropdown;
 
-  /// Whether this type has no special content (just text input preview)
-  bool get isTextOnlyType =>
-      type == QuestionType.shortAnswer ||
-      type == QuestionType.paragraph;
+  static Map<String, dynamic>? _asStringKeyMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
+  }
 
   /// Build the item body (shared between createItem and updateItem).
   /// Returns the "item" object without createItem/updateItem wrapper.
@@ -489,8 +486,8 @@ class QuestionItem {
 
     // Check for videoItem
     if (json.containsKey('videoItem')) {
-      final videoItem = json['videoItem'] as Map<String, dynamic>;
-      final video = videoItem['video'] as Map<String, dynamic>?;
+      final videoItem = _asStringKeyMap(json['videoItem']);
+      final video = videoItem != null ? _asStringKeyMap(videoItem['video']) : null;
       final youtubeUri = video?['youtubeUri'] as String? ?? '';
       return QuestionItem(
         itemId: itemId,
@@ -506,8 +503,9 @@ class QuestionItem {
 
     // Check for imageItem (real Google Forms image with contentUri)
     if (json.containsKey('imageItem')) {
-      final imageItem = json['imageItem'] as Map<String, dynamic>;
-      final image = imageItem['image'] as Map<String, dynamic>?;
+      final imageItem = _asStringKeyMap(json['imageItem']);
+      final image =
+          imageItem != null ? _asStringKeyMap(imageItem['image']) : null;
       final contentUri = image?['contentUri'] as String? ?? '';
       String? mediaUrl;
       if (contentUri.isNotEmpty) {
@@ -561,13 +559,16 @@ class QuestionItem {
 
     // Check for questionGroupItem (grid questions: multiple choice grid, checkbox grid)
     if (json.containsKey('questionGroupItem')) {
-      final groupItem = json['questionGroupItem'] as Map<String, dynamic>;
-      final grid = groupItem['grid'] as Map<String, dynamic>?;
+      final groupItem = _asStringKeyMap(json['questionGroupItem']);
+      if (groupItem == null) {
+        return QuestionItem(itemId: itemId, questionText: title);
+      }
+      final grid = _asStringKeyMap(groupItem['grid']);
       final questions = groupItem['questions'] as List<dynamic>? ?? [];
 
       if (grid != null) {
         // grid.columns is a single ChoiceQuestion object with type + options
-        final columnsObj = grid['columns'] as Map<String, dynamic>? ?? {};
+        final columnsObj = _asStringKeyMap(grid['columns']) ?? {};
         final apiGridType = columnsObj['type'] as String? ?? 'RADIO';
         final type = apiGridType == 'CHECKBOX'
             ? QuestionType.checkboxGrid
@@ -575,14 +576,18 @@ class QuestionItem {
 
         // Column values come from grid.columns.options[].value
         final colOpts = columnsObj['options'] as List<dynamic>? ?? [];
-        final gridColumns = colOpts.map((c) => (c['value'] as String?) ?? '').toList();
+        final gridColumns = colOpts
+            .whereType<Map<String, dynamic>>()
+            .map((c) => (c['value'] as String?) ?? '')
+            .toList();
 
         // Rows come from questions[].rowQuestion.title
         // Also extract questionIds for response matching
         final gridRows = <String>[];
         final gridRowQuestionIds = <String>[];
         for (final q in questions) {
-          final rowQ = q['rowQuestion'] as Map<String, dynamic>?;
+          if (q is! Map) continue;
+          final rowQ = _asStringKeyMap(q['rowQuestion']);
           gridRows.add(rowQ?['title'] as String? ?? '');
           // Each question in the group has a questionId
           gridRowQuestionIds.add(q['questionId'] as String? ?? '');
@@ -590,7 +595,7 @@ class QuestionItem {
 
         // Parse embedded image from questionGroupItem
         String? embeddedImageUrl;
-        final groupImage = groupItem['image'] as Map<String, dynamic>?;
+        final groupImage = _asStringKeyMap(groupItem['image']);
         if (groupImage != null) {
           embeddedImageUrl = groupImage['sourceUri'] as String? ?? groupImage['contentUri'] as String?;
         }
@@ -611,12 +616,15 @@ class QuestionItem {
       }
     }
 
-    final questionItem = json['questionItem'] as Map<String, dynamic>?;
+    final questionItem = _asStringKeyMap(json['questionItem']);
     // Get the questionId from questionItem for answer matching
-    final questionId = questionItem?['question']?['questionId'] as String? ?? '';
+    final questionMap = questionItem != null
+        ? _asStringKeyMap(questionItem['question'])
+        : null;
+    final questionId = questionMap?['questionId'] as String? ?? '';
     // Use questionId for answer matching (API responses key answers by questionId, not itemId)
     final effectiveItemId = questionId.isNotEmpty ? questionId : itemId;
-    final question = questionItem?['question'] as Map<String, dynamic>?;
+    final question = questionMap;
 
     QuestionType type = QuestionType.multipleChoice;
     List<String> options = [];
@@ -634,7 +642,14 @@ class QuestionItem {
     bool isOther = false;
 
     if (question?.containsKey('choiceQuestion') ?? false) {
-      final choiceQ = question!['choiceQuestion'] as Map<String, dynamic>;
+      final choiceQ = _asStringKeyMap(question!['choiceQuestion']);
+      if (choiceQ == null) {
+        return QuestionItem(
+          itemId: effectiveItemId,
+          questionText: title,
+          isRequired: isRequired,
+        );
+      }
       final apiType = choiceQ['type'] as String? ?? 'RADIO';
       switch (apiType) {
         case 'RADIO':
@@ -648,7 +663,7 @@ class QuestionItem {
           break;
       }
       final optsRaw = choiceQ['options'] as List<dynamic>? ?? [];
-      final optionsList = optsRaw.cast<Map<String, dynamic>>().toList();
+      final optionsList = optsRaw.whereType<Map<String, dynamic>>().toList();
       // Only parse isOther for multiple choice and checkbox (not dropdown)
       if (type != QuestionType.dropdown) {
         isOther = optionsList.any((o) => o['isOther'] == true);
@@ -658,13 +673,28 @@ class QuestionItem {
       }
       options = optionsList.map((o) => (o['value'] as String?) ?? '').toList();
     } else if (question?.containsKey('textQuestion') ?? false) {
-      final textQ = question!['textQuestion'] as Map<String, dynamic>;
+      final textQ = _asStringKeyMap(question!['textQuestion']);
+      if (textQ == null) {
+        return QuestionItem(
+          itemId: effectiveItemId,
+          questionText: title,
+          isRequired: isRequired,
+        );
+      }
       final paragraph = textQ['paragraph'] as bool? ?? false;
       type = paragraph ? QuestionType.paragraph : QuestionType.shortAnswer;
     } else if (question?.containsKey('scaleQuestion') ?? false) {
       // Linear Scale
       type = QuestionType.linearScale;
-      final scaleQ = question!['scaleQuestion'] as Map<String, dynamic>;
+      final scaleQ = _asStringKeyMap(question!['scaleQuestion']);
+      if (scaleQ == null) {
+        return QuestionItem(
+          itemId: effectiveItemId,
+          questionText: title,
+          type: QuestionType.linearScale,
+          isRequired: isRequired,
+        );
+      }
       scaleLow = scaleQ['low'] as int? ?? 1;
       scaleHigh = scaleQ['high'] as int? ?? 5;
       scaleLowLabel = scaleQ['lowLabel'] as String?;
@@ -672,33 +702,63 @@ class QuestionItem {
       options = [];
     } else if (question?.containsKey('gridQuestion') ?? false) {
       // Grid question
-      final gridQ = question!['gridQuestion'] as Map<String, dynamic>;
+      final gridQ = _asStringKeyMap(question!['gridQuestion']);
+      if (gridQ == null) {
+        return QuestionItem(
+          itemId: effectiveItemId,
+          questionText: title,
+          isRequired: isRequired,
+        );
+      }
       final apiGridType = gridQ['type'] as String? ?? 'RADIO';
       type = apiGridType == 'CHECKBOX'
           ? QuestionType.checkboxGrid
           : QuestionType.multipleChoiceGrid;
       final rows = gridQ['rows'] as List<dynamic>? ?? [];
       final cols = gridQ['columns'] as List<dynamic>? ?? [];
-      gridRows = rows.map((r) => (r['value'] as String?) ?? '').toList();
-      gridColumns = cols.map((c) => (c['value'] as String?) ?? '').toList();
+      gridRows = rows
+          .whereType<Map<String, dynamic>>()
+          .map((r) => (r['value'] as String?) ?? '')
+          .toList();
+      gridColumns = cols
+          .whereType<Map<String, dynamic>>()
+          .map((c) => (c['value'] as String?) ?? '')
+          .toList();
       options = [];
     } else if (question?.containsKey('dateQuestion') ?? false) {
       // Date question
       type = QuestionType.date;
-      final dateQ = question!['dateQuestion'] as Map<String, dynamic>;
+      final dateQ = _asStringKeyMap(question!['dateQuestion']);
+      if (dateQ == null) {
+        return QuestionItem(
+          itemId: effectiveItemId,
+          questionText: title,
+          type: QuestionType.date,
+          isRequired: isRequired,
+        );
+      }
       dateIncludeYear = dateQ['includeYear'] as bool? ?? true;
       options = [];
     } else if (question?.containsKey('timeQuestion') ?? false) {
       // Time question
       type = QuestionType.time;
-      final timeQ = question!['timeQuestion'] as Map<String, dynamic>;
+      final timeQ = _asStringKeyMap(question!['timeQuestion']);
+      if (timeQ == null) {
+        return QuestionItem(
+          itemId: effectiveItemId,
+          questionText: title,
+          type: QuestionType.time,
+          isRequired: isRequired,
+        );
+      }
       timeDuration = timeQ['duration'] as bool? ?? false;
       options = [];
     }
 
     // Parse embedded image from questionItem
     String? embeddedImageUrl;
-    final qImage = questionItem?['image'] as Map<String, dynamic>?;
+    final qImage =
+        questionItem != null ? _asStringKeyMap(questionItem['image']) : null;
     if (qImage != null) {
       embeddedImageUrl = qImage['sourceUri'] as String? ?? qImage['contentUri'] as String?;
     }
@@ -739,7 +799,6 @@ class QuestionItem {
     List<String>? gridRows,
     List<String>? gridColumns,
     bool? dateIncludeYear,
-    bool? dateIncludeTime,
     bool? timeDuration,
     bool? isOther,
     String? description,
@@ -760,7 +819,6 @@ class QuestionItem {
       gridRows: gridRows ?? List<String>.from(this.gridRows),
       gridColumns: gridColumns ?? List<String>.from(this.gridColumns),
       dateIncludeYear: dateIncludeYear ?? this.dateIncludeYear,
-      dateIncludeTime: dateIncludeTime ?? this.dateIncludeTime,
       isOther: isOther ?? this.isOther,
       timeDuration: timeDuration ?? this.timeDuration,
       description: description ?? this.description,

@@ -7,7 +7,6 @@ class FormEditor {
   final String? displayName;
   final String? photoUrl;
   final String role; // 'owner', 'writer', 'reader'
-  final String type; // 'user', 'group', 'anyone'
 
   const FormEditor({
     required this.permissionId,
@@ -15,7 +14,6 @@ class FormEditor {
     this.displayName,
     this.photoUrl,
     required this.role,
-    required this.type,
   });
 
   bool get isOwner => role == 'owner';
@@ -32,7 +30,6 @@ class FormEditor {
       displayName: json['displayName'] as String?,
       photoUrl: json['photoLink'] as String?,
       role: json['role'] as String? ?? 'reader',
-      type: json['type'] as String? ?? 'user',
     );
   }
 }
@@ -56,7 +53,6 @@ class FormModel {
   bool showProgressBar;
   String confirmationMessage;
   bool shuffleQuestions;
-  List<FormEditor> editors;
 
   FormModel({
     this.formId = '',
@@ -75,9 +71,7 @@ class FormModel {
     this.showProgressBar = false,
     this.confirmationMessage = 'Your response has been recorded.',
     this.shuffleQuestions = false,
-    List<FormEditor>? editors,
-  })  : questions = questions ?? [QuestionItem()],
-        editors = editors ?? [];
+  })  : questions = questions ?? [QuestionItem()];
 
   Map<String, dynamic> toCreateJson() {
     return {
@@ -102,9 +96,16 @@ class FormModel {
 
   factory FormModel.fromJson(Map<String, dynamic> json) {
     final items = (json['items'] as List<dynamic>?) ?? [];
-    final questions = items
-        .map((item) => QuestionItem.fromApiJson(item as Map<String, dynamic>))
-        .toList();
+    final questions = <QuestionItem>[];
+    for (final item in items) {
+      if (item is! Map<String, dynamic>) continue;
+      try {
+        questions.add(QuestionItem.fromApiJson(item));
+      } catch (e) {
+        // Skip malformed items instead of crashing the whole form load.
+        continue;
+      }
+    }
 
     // Parse emailCollectionType from REST API response
     final settingsJson = json['settings'] as Map<String, dynamic>?;

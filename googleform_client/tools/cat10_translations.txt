@@ -1,0 +1,27 @@
+| key | EN | JA | zh-Hans | zh-Hant | pt-BR | id | ru | de | fr |
+|---|---|---|---|---|---|---|---|---|---|
+| tabMyForms | My forms | マイフォーム | 我的表单 | 我的表單 | Meus formulários | Formulir saya | Мои формы | Meine Formulare | Mes formulaires |
+| tabTemplates | Templates | テンプレート | 模板 | 範本 | Modelos | Templat | Шаблоны | Vorlagen | Modèles |
+| searchForms | Search your forms | フォームを検索 | 搜索您的表单 | 搜尋你的表單 | Pesquise seus formulários | Cari formulir Anda | Поиск по вашим формам | Durchsuchen Sie Ihre Formulare | Recherchez vos formulaires |
+| recentForms | Recent forms | 最近のフォーム | 最近的表单 | 近期表單 | Formulários recentes | Bentuk terkini | Последние формы | Aktuelle Formen | Formulaires récents |
+| noRecentForms | No recent forms | 最近のフォームはありません | 没有最近的表单 | 沒有近期表單 | Nenhum formulário recente | Tidak ada formulir terbaru | Нет последних форм | Keine aktuellen Formulare | Aucun formulaire récent |
+| lastModified | Last modified | 最終更新日 | 最近修改 | 最近修改 | Última modificação | Terakhir diubah | Последнее изменение | Zuletzt geändert | Dernière modification |
+| lastOpened | Last opened | 最終閲覧日 | 最近打开 | 最近開啟 | Aberto pela última vez | Terakhir dibuka | Последнее открытие | Zuletzt geöffnet | Dernière ouverture |
+| ownedByMe | Owned by me | 自分が所有 | 我拥有的 | 我擁有的 | De minha propriedade | Milik saya | Принадлежит мне | Gehört mir | Possédé par moi |
+| notOwnedByMe | Not owned by me | 自分以外が所有 | 非我拥有的 | 非我擁有的 | Não é de minha propriedade | Bukan milikku | Не принадлежит мне | Nicht in meinem Besitz | Ne m'appartient pas |
+| ownedByAnyone | Owned by anyone | すべてのユーザー | 任何人拥有 | 任何人擁有 | Propriedade de qualquer pessoa | Milik siapa pun | Принадлежит кому-либо | Im Besitz von irgendjemandem | Possédé par n'importe qui |
+| titleAZ | Title (A–Z) | タイトル (A–Z) | 标题 (A–Z) | 標題 (A-Z) | Título (A – Z) | Judul (A–Z) | Название (А–Я) | Titel (A–Z) | Titre (A à Z) |
+| deleteFormTitle | Delete form? | フォームを削除しますか？ | 删除表单？ | 刪除表單？ | Excluir formulário? | Hapus formulir? | Удалить форму? | Formular löschen? | Supprimer le formulaire ? |
+| deleteFormContent | This form will be moved to trash. | このフォームはゴミ箱に移動されます。 | 此表单将移至回收站。 | 此表單將會被移至垃圾桶。 | Este formulário será movido para a lixeira. | Formulir ini akan dipindahkan ke sampah. | Эта форма будет перемещена в корзину. | Dieses Formular wird in den Papierkorb verschoben. | Ce formulaire sera déplacé vers la corbeille. |
+| formMovedToTrash | Form moved to trash | フォームをゴミ箱に移動しました | 表单已移至回收站 | 表單已移至垃圾桶 | Formulário movido para a lixeira | Formulir dipindahkan ke sampah | Форма перемещена в корзину | Formular in den Papierkorb verschoben | Formulaire déplacé vers la corbeille |
+| duplicate | Duplicate | 複製 | 复制 | 複製 | Duplicado | Buat duplikat | Дублировать | Duplikat | Double |
+| duplicatingForm | Duplicating form... | フォームを複製しています… | 正在复制表单… | 正在複製表單… | Duplicando formulário... | Menggandakan formulir... | Дублирование формы... | Formular wird dupliziert... | Duplication du formulaire... |
+| formDuplicated | Form duplicated! | フォームを複製しました！ | 表单已复制！ | 表單已複製！ | Formulário duplicado! | Formulir digandakan! | Форма продублирована! | Formular dupliziert! | Formulaire dupliqué ! |
+| failedToDuplicateForm | Failed to duplicate form | フォームを複製できませんでした | 无法复制表单 | 無法複製表單 | Falha ao duplicar o formulário | Gagal menggandakan formulir | Не удалось дублировать форму. | Formular konnte nicht dupliziert werden | Échec de la duplication du formulaire |
+| rename | Rename | 名前を変更 | 重命名 | 重新命名 | Renomear | Ganti nama | Переименовать | Umbenennen | Rebaptiser |
+| renameForm | Rename form | フォームの名前を変更 | 重命名表单 | 重新命名表單 | Renomear formulário | Ganti nama formulir | Переименование формы | Formular umbenennen | Renommer le formulaire |
+| formRenamed | Form renamed | フォームの名前を変更しました | 表单已重命名 | 表單已重新命名 | Formulário renomeado | Formulir diganti namanya | Форма переименована | Formular umbenannt | Formulaire renommé |
+| failedToRename | Failed to rename form | フォームの名前を変更できませんでした | 重命名表单失败 | 重新命名表單失敗 | Falha ao renomear o formulário | Gagal mengganti nama formulir | Не удалось переименовать форму | Formular konnte nicht umbenannt werden | Échec du changement de nom du formulaire |
+| enterNewName | Enter new name | 新しい名前を入力 | 输入新名称 | 輸入新名稱 | Digite o novo nome | Masukkan nama baru | Введите новое имя | Geben Sie einen neuen Namen ein | Entrez un nouveau nom |
+| documentName | Document name | ドキュメント名 | 文档名称 | 文件名稱 | Nome do documento | Nama dokumen | Название документа | Dokumentname | Nom du document |
+| copyLink | Copy link | リンクをコピー | 复制链接 | 複製連結 | Copiar link | Salin tautan | Копировать ссылку | Link kopieren | Copier le lien |

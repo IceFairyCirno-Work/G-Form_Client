@@ -39,13 +39,6 @@ class Responsive {
     return isSmallScreen(context) ? 2 : 3;
   }
 
-  /// Horizontal content padding that scales slightly on larger screens.
-  static double getAdaptivePadding(BuildContext context) {
-    if (isTablet(context)) return 24;
-    if (isSmallScreen(context)) return 12;
-    return 16;
-  }
-
   /// Vertical spacer height for centered layouts (e.g. login screen).
   static double getLandscapeAwareSpacer(
     BuildContext context, {

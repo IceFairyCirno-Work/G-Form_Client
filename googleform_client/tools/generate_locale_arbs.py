@@ -225,7 +225,7 @@ T = {
     "qTypeCheckboxes": ("チェックボックス", "多选题", "체크박스"),
     "qTypeShortAnswer": ("記述式(短文)", "简短回答", "단답형"),
     "qTypeParagraph": ("段落", "段落", "장문형"),
-    "qTypeDropdown": ("ブルダウン", "下拉列表", "드롭다운"),
+    "qTypeDropdown": ("プルダウン", "下拉列表", "드롭다운"),
     "qTypeImage": ("画像", "图片", "이미지"),
     "qTypeVideo": ("動画", "视频", "동영상"),
     "qTypeLinearScale": ("均等目盛", "线性量表", "직선 단계"),

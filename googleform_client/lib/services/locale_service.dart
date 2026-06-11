@@ -17,12 +17,19 @@ class LocaleService {
     Locale('ja'),
     Locale('zh'),
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+    Locale('pt'),
+    Locale('id'),
+    Locale('ru'),
+    Locale('de'),
+    Locale('fr'),
   ];
 
   static const _traditionalChinese = Locale.fromSubtags(
     languageCode: 'zh',
     scriptCode: 'Hant',
   );
+
+  static const _portuguese = Locale('pt');
 
   /// Notifies listeners when the active locale changes.
   final ValueNotifier<Locale?> localeNotifier = ValueNotifier<Locale?>(null);
@@ -56,6 +63,13 @@ class LocaleService {
     return const Locale('en');
   }
 
+  /// Resolved locale for the current platform language and user preference.
+  Locale activeLocale([Locale? deviceLocale]) {
+    return resolveLocale(deviceLocale ?? PlatformDispatcher.instance.locale);
+  }
+
+  /// Whether the app follows the device locale instead of a fixed choice.
+  bool get followsSystem => localeNotifier.value == null;
   /// Persist and apply a locale choice.
   /// Pass `null` to follow system default.
   Future<void> setLocale(Locale? locale) async {
@@ -75,6 +89,11 @@ class LocaleService {
     required String japaneseLabel,
     required String simplifiedChineseLabel,
     required String traditionalChineseLabel,
+    required String portugueseBrazilLabel,
+    required String indonesianLabel,
+    required String russianLabel,
+    required String germanLabel,
+    required String frenchLabel,
   }) {
     final preferred = localeNotifier.value;
     if (preferred == null) return systemDefaultLabel;
@@ -85,6 +104,16 @@ class LocaleService {
         return _isTraditionalChinese(preferred)
             ? traditionalChineseLabel
             : simplifiedChineseLabel;
+      case 'pt':
+        return portugueseBrazilLabel;
+      case 'id':
+        return indonesianLabel;
+      case 'ru':
+        return russianLabel;
+      case 'de':
+        return germanLabel;
+      case 'fr':
+        return frenchLabel;
       case 'en':
         return englishLabel;
       default:
@@ -111,6 +140,16 @@ class LocaleService {
         return const Locale('en');
       case 'zh':
         return _resolveChineseLocale(locale);
+      case 'pt':
+        return _portuguese;
+      case 'id':
+        return const Locale('id');
+      case 'ru':
+        return const Locale('ru');
+      case 'de':
+        return const Locale('de');
+      case 'fr':
+        return const Locale('fr');
       default:
         return null;
     }
@@ -144,6 +183,16 @@ class LocaleService {
         return const Locale('zh');
       case 'zh_Hant':
         return _traditionalChinese;
+      case 'pt_BR':
+        return _portuguese;
+      case 'id':
+        return const Locale('id');
+      case 'ru':
+        return const Locale('ru');
+      case 'de':
+        return const Locale('de');
+      case 'fr':
+        return const Locale('fr');
       case 'en':
       default:
         return const Locale('en');
@@ -153,6 +202,9 @@ class LocaleService {
   static String _codeFromLocale(Locale locale) {
     if (locale.languageCode == 'zh') {
       return _isTraditionalChinese(locale) ? 'zh_Hant' : 'zh';
+    }
+    if (locale.languageCode == 'pt') {
+      return 'pt';
     }
     return locale.languageCode;
   }

@@ -1039,4 +1039,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get userFallback => 'User';
+
+  @override
+  String get languagePortugueseBrazil => 'Português (Brasil)';
+
+  @override
+  String get languageIndonesian => 'Bahasa Indonesia';
+
+  @override
+  String get languageRussian => 'Русский';
+
+  @override
+  String get languageGerman => 'Deutsch';
+
+  @override
+  String get languageFrench => 'Français';
+
+  @override
+  String get noInternetConnection => 'No internet connection';
+
+  @override
+  String get noInternetConnectionDesc =>
+      'Please check your network settings and try again.';
+
+  @override
+  String get noInternetSaveError => 'No internet connection. Cannot save form.';
+
+  @override
+  String get noInternetLoadError => 'No internet connection. Cannot load form.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get formNoLongerExists => 'This form no longer exists or was deleted.';
+
+  @override
+  String get failedToPickImage => 'Could not pick image. Please try again.';
+
+  @override
+  String get failedToShareFile => 'Could not share file.';
 }

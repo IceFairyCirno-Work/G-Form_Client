@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:googleform_client/l10n/app_localizations.dart';
 import '../models/form_model.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_forms_service.dart';
+import '../services/connectivity_service.dart';
 import '../utils/app_strings.dart';
 import '../utils/responsive.dart';
 import '../utils/template_manager.dart';
@@ -54,6 +57,13 @@ class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final GoogleAuthService _authService = GoogleAuthService();
   final GoogleFormsService _formsService = GoogleFormsService();
+  final ConnectivityService _connectivityService = ConnectivityService();
+  StreamSubscription<bool>? _connectivitySubscription;
+  bool _isOffline = false;
+  /// True after the app enters [AppLifecycleState.paused]/[hidden].
+  /// Quick-settings / notification shade only triggers [inactive], so we
+  /// skip reload on those transient resumes.
+  bool _wasBackgrounded = false;
   List<FormCardData> _recentForms = [];
   List<FormCardData> _cachedFilteredForms = [];
   bool _isLoadingForms = false;
@@ -157,6 +167,21 @@ class _HomeScreenState extends State<HomeScreen>
     _tabController.addListener(_handleTabChange);
     _searchFocusNode.addListener(_onSearchFocusChange);
     WidgetsBinding.instance.addObserver(this);
+    _connectivityService.checkConnectivity().then((online) {
+      if (mounted && !online) {
+        setState(() => _isOffline = true);
+      }
+    });
+    _connectivitySubscription = _connectivityService.onConnectivityChanged.listen((online) {
+      if (mounted) {
+        final wasOffline = _isOffline;
+        setState(() => _isOffline = !online);
+        if (wasOffline && online) {
+          _loadRecentForms();
+          _fetchTemplateThumbnails();
+        }
+      }
+    });
     _loadRecentForms();
     _fetchTemplateThumbnails();
   }
@@ -168,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen>
     _searchController.dispose();
     _searchFocusNode.removeListener(_onSearchFocusChange);
     _searchFocusNode.dispose();
+    _connectivitySubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -199,12 +225,17 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _wasBackgrounded = true;
+    } else if (state == AppLifecycleState.resumed && _wasBackgrounded) {
+      _wasBackgrounded = false;
       _loadRecentForms();
     }
   }
 
   Future<void> _loadRecentForms() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingForms = true;
       _nextPageToken = null;
@@ -220,12 +251,16 @@ class _HomeScreenState extends State<HomeScreen>
       ownershipFilter: _ownershipFilter,
     );
 
+    if (!mounted) return;
+
+    final untitledLabel = AppLocalizations.of(context).untitled;
+
     // Create card data without form details first
     final cardData = result.forms
         .map(
           (f) => FormCardData(
             id: f['id'] ?? '',
-            name: f['name'] ?? AppLocalizations.of(context).untitled,
+            name: f['name'] ?? untitledLabel,
             modifiedTime: f['modifiedTime'] ?? '',
             lastOpenedTime: f['lastOpenedTime'] ?? '',
             thumbnailLink: f['thumbnailLink'] ?? '',
@@ -249,6 +284,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadMoreForms() async {
     if (_isLoadingMoreForms || !_hasMoreForms) return;
+    if (!mounted) return;
     setState(() => _isLoadingMoreForms = true);
 
     final orderBy = switch (_sortBy) {
@@ -262,11 +298,15 @@ class _HomeScreenState extends State<HomeScreen>
       pageToken: _nextPageToken,
     );
 
+    if (!mounted) return;
+
+    final untitledLabel = AppLocalizations.of(context).untitled;
+
     final newCards = result.forms
         .map(
           (f) => FormCardData(
             id: f['id'] ?? '',
-            name: f['name'] ?? AppLocalizations.of(context).untitled,
+            name: f['name'] ?? untitledLabel,
             modifiedTime: f['modifiedTime'] ?? '',
             lastOpenedTime: f['lastOpenedTime'] ?? '',
             thumbnailLink: f['thumbnailLink'] ?? '',
@@ -357,14 +397,31 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  void _navigateToFormEditor({String? formId}) {
+  Future<void> _navigateToFormEditor({String? formId}) async {
+    if (formId != null) {
+      final isOnline = await _connectivityService.checkConnectivity();
+      if (!isOnline) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).noInternetLoadError),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+    }
+    if (!mounted) return;
     Navigator.of(context)
         .push(
           MaterialPageRoute(
             builder: (context) => FormEditorScreen(formId: formId),
           ),
         )
-        .then((_) => _loadRecentForms());
+        .then((_) {
+          if (mounted) _loadRecentForms();
+        });
   }
 
   String _formatDate(String dateStr) {
@@ -456,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (mounted) {
       if (success) {
         setState(() {
-          _recentForms.removeAt(index);
+          _recentForms.removeWhere((f) => f.id == formId);
         });
         _updateFilteredForms();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -674,30 +731,37 @@ class _HomeScreenState extends State<HomeScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
-                width: _isSearchFocused ? 0 : 48,
+                width: _isSearchFocused ? 4 : 48,
                 child: OverflowBox(
                   maxWidth: 48,
                   maxHeight: 48,
                   alignment: Alignment.center,
-                  child: IgnorePointer(
-                    ignoring: _isSearchFocused,
-                    child: IconButton(
-                      onPressed: () {
-                        _searchFocusNode.unfocus();
-                        Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (context) => const SettingsScreen(),
-                              ),
-                            )
-                            .then((_) => setState(() {}));
-                      },
-                      icon: const Icon(
-                        Symbols.settings,
-                        color: Color(0xFF5F6368),
-                        size: 24,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeInOut,
+                    opacity: _isSearchFocused ? 0.0 : 1.0,
+                    child: IgnorePointer(
+                      ignoring: _isSearchFocused,
+                      child: IconButton(
+                        onPressed: () {
+                          _searchFocusNode.unfocus();
+                          Navigator.of(context)
+                              .push(
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsScreen(),
+                                ),
+                              )
+                              .then((_) {
+                                if (mounted) setState(() {});
+                              });
+                        },
+                        icon: const Icon(
+                          Symbols.settings,
+                          color: Color(0xFF5F6368),
+                          size: 24,
+                        ),
+                        tooltip: l10n.settings,
                       ),
-                      tooltip: l10n.settings,
                     ),
                   ),
                 ),
@@ -735,7 +799,9 @@ class _HomeScreenState extends State<HomeScreen>
                   builder: (context) => const FormEditorScreen(),
                 ),
               )
-              .then((_) => _loadRecentForms());
+              .then((_) {
+                if (mounted) _loadRecentForms();
+              });
         },
         backgroundColor: const Color(0xFF673AB7),
         shape: const CircleBorder(),
@@ -775,6 +841,20 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(l10n.templateComingSoon),
           backgroundColor: const Color(0xFF9E9E9E),
           duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Check internet connectivity before loading template
+    final isOnline = await _connectivityService.checkConnectivity();
+    if (!isOnline) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).noInternetLoadError),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
       return;
@@ -831,6 +911,57 @@ class _HomeScreenState extends State<HomeScreen>
     _loadRecentForms();
   }
 
+  Widget _buildNoInternetWidget({VoidCallback? onRetry}) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Symbols.wifi_off,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.noInternetConnection,
+              style: const TextStyle(
+                color: Color(0xFF5F6368),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.noInternetConnectionDesc,
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            if (onRetry != null)
+              OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Symbols.refresh, size: 18),
+                label: Text(l10n.retry),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF673AB7),
+                  side: const BorderSide(color: Color(0xFF673AB7)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// My Forms tab — Grid view wrapped in a white container (like Templates tab).
   Widget _buildMyFormsGridView() {
     final l10n = AppLocalizations.of(context);
@@ -881,7 +1012,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
 
-                // Loading / Empty / Filtered states
+                // Loading / Offline / Empty / Filtered states
                 if (_isLoadingForms)
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -900,6 +1031,10 @@ class _HomeScreenState extends State<HomeScreen>
                         childCount: 6,
                       ),
                     ),
+                  )
+                else if (_isOffline)
+                  SliverToBoxAdapter(
+                    child: _buildNoInternetWidget(onRetry: _loadRecentForms),
                   )
                 else if (_recentForms.isEmpty)
                   SliverToBoxAdapter(
@@ -1094,7 +1229,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-            // Loading / Empty / Filtered states
+            // Loading / Offline / Empty / Filtered states
             if (_isLoadingForms)
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: _itemHorizontalPadding),
@@ -1110,6 +1245,10 @@ class _HomeScreenState extends State<HomeScreen>
                     childCount: 10,
                   ),
                 ),
+              )
+            else if (_isOffline)
+              SliverToBoxAdapter(
+                child: _buildNoInternetWidget(onRetry: _loadRecentForms),
               )
             else if (_recentForms.isEmpty)
               SliverToBoxAdapter(
@@ -1239,22 +1378,26 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               _buildTemplateCategoryChips(),
               const SizedBox(height: 16),
-              if (_showTemplateCategoryRows)
+              if (_isOffline)
+                _buildNoInternetWidget(onRetry: _fetchTemplateThumbnails)
+              else if (_showTemplateCategoryRows)
                 ..._buildAllCategoriesView()
               else if (_searchQuery.isNotEmpty && _filteredTemplates.isEmpty)
                 _buildTemplateSearchEmptyState()
               else
                 _buildTemplateGridView(),
-              const SizedBox(height: 24),
-              Center(
-                child: Text(
-                  l10n.thisIsTheEnd,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF80868B),
+              if (!_isOffline) ...[
+                const SizedBox(height: 24),
+                Center(
+                  child: Text(
+                    l10n.thisIsTheEnd,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF80868B),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -1649,12 +1792,15 @@ class _HomeScreenState extends State<HomeScreen>
       offset: const Offset(0, 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       position: PopupMenuPosition.over,
-      constraints: const BoxConstraints(minWidth: 180),
+      constraints: BoxConstraints(
+        minWidth: 180,
+        maxWidth: MediaQuery.sizeOf(context).width * 0.85,
+      ),
       itemBuilder: (ctx) => filterOptions.entries.map((entry) {
         final isSelected = entry.key == _ownershipFilter;
         return PopupMenuItem<String>(
           value: entry.key,
-          height: 42,
+          height: 48,
           child: Row(
             children: [
               Icon(
@@ -1665,17 +1811,20 @@ class _HomeScreenState extends State<HomeScreen>
                     : const Color(0xFF5F6368),
               ),
               const SizedBox(width: 10),
-              Text(
-                entry.value.$1,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected
-                      ? const Color(0xFF673AB7)
-                      : const Color(0xFF202124),
+              Expanded(
+                child: Text(
+                  entry.value.$1,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected
+                        ? const Color(0xFF673AB7)
+                        : const Color(0xFF202124),
+                  ),
                 ),
               ),
-              const Spacer(),
               if (isSelected)
                 const Icon(Symbols.check, size: 18, color: Color(0xFF673AB7)),
             ],
@@ -1717,12 +1866,15 @@ class _HomeScreenState extends State<HomeScreen>
       offset: const Offset(0, 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       position: PopupMenuPosition.over,
-      constraints: const BoxConstraints(minWidth: 180),
+      constraints: BoxConstraints(
+        minWidth: 180,
+        maxWidth: MediaQuery.sizeOf(context).width * 0.85,
+      ),
       itemBuilder: (ctx) => sortOptions.entries.map((entry) {
         final isSelected = entry.key == _sortBy;
         return PopupMenuItem<String>(
           value: entry.key,
-          height: 42,
+          height: 48,
           child: Row(
             children: [
               Icon(
@@ -1733,17 +1885,20 @@ class _HomeScreenState extends State<HomeScreen>
                     : const Color(0xFF5F6368),
               ),
               const SizedBox(width: 10),
-              Text(
-                entry.value.$1,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected
-                      ? const Color(0xFF673AB7)
-                      : const Color(0xFF202124),
+              Expanded(
+                child: Text(
+                  entry.value.$1,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected
+                        ? const Color(0xFF673AB7)
+                        : const Color(0xFF202124),
+                  ),
                 ),
               ),
-              const Spacer(),
               if (isSelected)
                 const Icon(Symbols.check, size: 18, color: Color(0xFF673AB7)),
             ],

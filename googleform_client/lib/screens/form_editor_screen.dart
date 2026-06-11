@@ -20,6 +20,7 @@ import '../models/response_model.dart';
 import '../services/apps_script_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_forms_service.dart';
+import '../services/connectivity_service.dart';
 import '../utils/app_icons.dart';
 import '../utils/responsive.dart';
 import 'package:googleform_client/l10n/app_localizations.dart';
@@ -60,6 +61,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   final GoogleFormsService _formsService = GoogleFormsService();
   final AppsScriptService _appsScriptService = AppsScriptService();
   final GoogleAuthService _authService = GoogleAuthService();
+  final ConnectivityService _connectivityService = ConnectivityService();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _documentTitleController = TextEditingController();
@@ -1072,6 +1074,8 @@ class _FormEditorScreenState extends State<FormEditorScreen>
             Text(
               AppStrings.questionTypeLabel(ctx, type),
               textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -1617,7 +1621,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         children: [
           _buildMaterialSymbolIcon(_questionTypeIcon(type)),
           const SizedBox(width: 8),
-          Text(_questionTypeLabel(context, type)),
+          Expanded(
+            child: Text(
+              _questionTypeLabel(context, type),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -1661,32 +1671,60 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   Future<void> _pickImage(int index) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1200,
-      imageQuality: 85,
-    );
-    if (pickedFile != null && mounted) {
-      _markDirty();
-      _safeSetState(() {
-        _questions[index].mediaUrl = pickedFile.path;
-      });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        imageQuality: 85,
+      );
+      if (pickedFile != null &&
+          mounted &&
+          index >= 0 &&
+          index < _questions.length) {
+        _markDirty();
+        _safeSetState(() {
+          _questions[index].mediaUrl = pickedFile.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToPickImage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _pickEmbeddedImage(int index) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1200,
-      imageQuality: 85,
-    );
-    if (pickedFile != null && mounted) {
-      _markDirty();
-      _safeSetState(() {
-        _questions[index].embeddedImageUrl = pickedFile.path;
-      });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        imageQuality: 85,
+      );
+      if (pickedFile != null &&
+          mounted &&
+          index >= 0 &&
+          index < _questions.length) {
+        _markDirty();
+        _safeSetState(() {
+          _questions[index].embeddedImageUrl = pickedFile.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToPickImage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -1823,6 +1861,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   controller: controller,
                   decoration: InputDecoration(
                     hintText: l10n.pasteYouTubeUrl,
+                    hintMaxLines: 2,
                     hintStyle: TextStyle(color: Color(0xFF9E9E9E)),
                     border: OutlineInputBorder(),
                   ),
@@ -1913,6 +1952,20 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     await _finalizeDocumentTitleEditing();
     if (!mounted) return;
     if (_isSaving) return;
+
+    // Check internet connectivity before saving
+    final isOnline = await _connectivityService.checkConnectivity();
+    if (!isOnline) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).noInternetSaveError),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     final l10n = AppLocalizations.of(context);
     final pendingDocumentTitle = _normalizedDocumentTitle(l10n);
@@ -2028,7 +2081,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
       }
 
       // Show saving overlay IMMEDIATELY — no delay between user action and overlay
-      setState(() => _isSaving = true);
+      _safeSetState(() => _isSaving = true);
       _showSavingOverlay();
 
       // Now fetch fresh data and perform the update (behind the overlay)
@@ -2076,7 +2129,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
   /// Save a brand new form using createFullForm.
   Future<void> _saveNewForm(FormModel form) async {
-    setState(() => _isSaving = true);
+    _safeSetState(() => _isSaving = true);
     _showSavingOverlay();
 
     final result = await _formsService.createFullForm(form);
@@ -2145,9 +2198,24 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   /// Save changes to an existing form using in-place update (batchUpdate).
   /// Called AFTER the saving overlay is already shown.
   Future<void> _saveExistingForm(FormModel updatedForm) async {
+    final formId = _currentFormId;
+    if (formId == null || formId.isEmpty || _originalForm == null) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close saving overlay
+        _safeSetState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).formNoLongerExists),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     // Fetch the latest original form from the API to get accurate itemIds
     // (this runs behind the saving overlay, so no visible delay)
-    final freshOriginal = await _formsService.getForm(_currentFormId!);
+    final freshOriginal = await _formsService.getForm(formId);
     if (freshOriginal == null) {
       if (mounted) {
         Navigator.of(context).pop(); // Close saving overlay
@@ -2166,7 +2234,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     _originalForm = freshOriginal;
 
     final result = await _formsService.updateExistingForm(
-      _currentFormId!,
+      formId,
       _originalForm!,
       updatedForm,
     );
@@ -2186,7 +2254,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         _documentTitleController.text = docTitle;
       });
       await _applySettingsAndFinish(
-        _currentFormId!,
+        formId,
         savedForm.responderUri ?? _responderUri,
         error, // non-fatal errors (e.g. rename failed)
       );
@@ -3177,15 +3245,17 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                 Expanded(
                   child: PopupMenuButton<QuestionType>(
                     onSelected: (type) => _changeQuestionType(index, type),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width - 120,
+                    ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildMaterialSymbolIcon(
                           _questionTypeIcon(question.type),
                           color: const Color(0xFF673AB7),
                         ),
                         const SizedBox(width: 6),
-                        Flexible(
+                        Expanded(
                           child: Text(
                             _questionTypeLabel(context, question.type),
                             style: const TextStyle(
@@ -3193,6 +3263,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                               color: Color(0xFF673AB7),
                               fontWeight: FontWeight.w500,
                             ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -3803,6 +3874,27 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   }
 
   // ==================== LINEAR SCALE CONTENT ====================
+  Widget _buildScaleBoundSelector({
+    required String label,
+    required Widget dropdown,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF5F6368)),
+          ),
+        ),
+        const SizedBox(width: 4),
+        dropdown,
+      ],
+    );
+  }
+
   Widget _buildLinearScaleContent(int index) {
     final l10n = AppLocalizations.of(context);
     final q = _questions[index];
@@ -3816,66 +3908,67 @@ class _FormEditorScreenState extends State<FormEditorScreen>
         children: [
           // Scale range configuration
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                l10n.minValue,
-                style: TextStyle(fontSize: 12, color: Color(0xFF5F6368)),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 56,
-                child: DropdownButton<int>(
-                  value: low.clamp(0, high - 1),
-                  items: List.generate(
-                    high,
-                    (i) => DropdownMenuItem(value: i, child: Text('$i')),
-                  ),
-                  onChanged: (val) {
-                    if (val != null && val < high) {
-                      _markDirty();
-                      _safeSetState(() {
-                        _questions[index].scaleLow = val;
-                      });
-                    }
-                  },
-                  isDense: true,
-                  underline: Container(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF202124),
+              Expanded(
+                child: _buildScaleBoundSelector(
+                  label: l10n. minValue,
+                  dropdown: SizedBox(
+                    width: 56,
+                    child: DropdownButton<int>(
+                      value: low.clamp(0, high - 1),
+                      items: List.generate(
+                        high,
+                        (i) => DropdownMenuItem(value: i, child: Text('$i')),
+                      ),
+                      onChanged: (val) {
+                        if (val != null && val < high) {
+                          _markDirty();
+                          _safeSetState(
+                            () => _questions[index].scaleLow = val,
+                          );
+                        }
+                      },
+                      isDense: true,
+                      underline: Container(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF202124),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 24),
-              Text(
-                l10n.maxValue,
-                style: TextStyle(fontSize: 12, color: Color(0xFF5F6368)),
-              ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 56,
-                child: DropdownButton<int>(
-                  value: high.clamp(low + 1, 10),
-                  items: List.generate(
-                    10 - low,
-                    (i) => DropdownMenuItem(
-                      value: low + 1 + i,
-                      child: Text('${low + 1 + i}'),
+              Expanded(
+                child: _buildScaleBoundSelector(
+                  label: l10n.maxValue,
+                  dropdown: SizedBox(
+                    width: 56,
+                    child: DropdownButton<int>(
+                      value: high.clamp(low + 1, 10),
+                      items: List.generate(
+                        10 - low,
+                        (i) => DropdownMenuItem(
+                          value: low + 1 + i,
+                          child: Text('${low + 1 + i}'),
+                        ),
+                      ),
+                      onChanged: (val) {
+                        if (val != null && val > low) {
+                          _markDirty();
+                          _safeSetState(
+                            () => _questions[index].scaleHigh = val,
+                          );
+                        }
+                      },
+                      isDense: true,
+                      underline: Container(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF202124),
+                      ),
                     ),
-                  ),
-                  onChanged: (val) {
-                    if (val != null && val > low) {
-                      _markDirty();
-                      _safeSetState(() {
-                        _questions[index].scaleHigh = val;
-                      });
-                    }
-                  },
-                  isDense: true,
-                  underline: Container(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF202124),
                   ),
                 ),
               ),
@@ -4447,7 +4540,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   // ==================== RESPONSE TAB ====================
   Future<void> _loadResponsesForTab() async {
     if (_currentFormId == null || _isLoadingResponses) return;
-    setState(() => _isLoadingResponses = true);
+    _safeSetState(() => _isLoadingResponses = true);
 
     FormModel? latestForm;
     if (!_isDirty) {
@@ -4927,7 +5020,18 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
 
     if (filePath != null && mounted) {
-      await Share.shareXFiles([XFile(filePath)], subject: '$fileName.xlsx');
+      try {
+        await Share.shareXFiles([XFile(filePath)], subject: '$fileName.xlsx');
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).failedToShareFile),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -4965,7 +5069,16 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     }
 
     if (mounted) {
-      await Share.shareXFiles([XFile(filePath)], subject: '$fileName.csv');
+      try {
+        await Share.shareXFiles([XFile(filePath)], subject: '$fileName.csv');
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToShareFile),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -5204,7 +5317,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
   /// Create an empty spreadsheet and link it as the form's response destination.
   Future<void> _createAndLinkSpreadsheet(String sheetName) async {
     if (!mounted) return;
-    setState(() => _isSaving = true);
+    _safeSetState(() => _isSaving = true);
 
     try {
       // Step 1: Create empty spreadsheet via Sheets API
@@ -5317,7 +5430,7 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     if (confirmed != true || !mounted) return;
 
-    setState(() => _isSaving = true);
+    _safeSetState(() => _isSaving = true);
 
     final result = await _appsScriptService.unlinkFormFromSheet(
       _currentFormId!,
@@ -6471,9 +6584,13 @@ class _FormEditorScreenState extends State<FormEditorScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Text(
-                l10n.questionLabel,
-                style: TextStyle(fontSize: 14, color: Color(0xFF5F6368)),
+              Flexible(
+                child: Text(
+                  l10n.questionLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF5F6368)),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -8483,16 +8600,20 @@ class _FormEditorScreenState extends State<FormEditorScreen>
                   ),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Symbols.add, color: Color(0xFF673AB7), size: 18),
                     const SizedBox(width: 8),
-                    Text(
-                      l10n.pasteYouTubeVideoUrl,
-                      style: TextStyle(
-                        color: const Color(0xFF673AB7),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        l10n.pasteYouTubeVideoUrl,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF673AB7),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],

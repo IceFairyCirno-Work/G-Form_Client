@@ -497,5 +497,18 @@
     }
   },
   "linkCopiedToClipboardExclaim": "链接已复制到剪贴板！",
-  "userFallback": "用户"
+  "userFallback": "用户",
+  "languagePortugueseBrazil": "Português (Brasil)",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageRussian": "Русский",
+  "languageGerman": "Deutsch",
+  "languageFrench": "Français",
+  "formNoLongerExists": "此表单已不存在或已被删除。",
+  "failedToPickImage": "无法选择图片，请重试。",
+  "failedToShareFile": "无法分享文件。",
+  "noInternetConnection": "无网络连接",
+  "noInternetConnectionDesc": "请检查您的网络设置，然后重试。",
+  "noInternetSaveError": "无网络连接，无法保存表单。",
+  "noInternetLoadError": "无网络连接，无法加载表单。",
+  "retry": "重试"
 }

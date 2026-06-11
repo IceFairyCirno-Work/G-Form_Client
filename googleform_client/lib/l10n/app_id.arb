@@ -1,0 +1,514 @@
+{
+  "@@locale": "id",
+  "appName": "Form",
+  "cancel": "Membatalkan",
+  "save": "Menyimpan",
+  "delete": "Menghapus",
+  "discard": "Membuang",
+  "continueAction": "Melanjutkan",
+  "done": "Selesai",
+  "remove": "Menghapus",
+  "add": "Menambahkan",
+  "settings": "Pengaturan",
+  "close": "Menutup",
+  "untitled": "Tanpa judul",
+  "open": "Membuka",
+  "change": "Mengubah",
+  "export": "Ekspor",
+  "publish": "Menerbitkan",
+  "unlink": "Putuskan tautan",
+  "duplicate": "Buat salinan",
+  "rename": "Ganti nama",
+  "renameForm": "Ganti nama",
+  "enterNewName": "Masukkan nama baru",
+  "documentName": "Nama dokumen",
+  "formRenamed": "Nama diganti",
+  "failedToRename": "Gagal mengganti nama",
+  "required": "Wajib diisi",
+  "optional": "Opsional",
+  "other": "Lainnya",
+  "description": "Keterangan",
+  "question": "Pertanyaan",
+  "columns": "Kolom",
+  "rows": "Baris",
+  "image": "Gambar",
+  "video": "Video",
+  "owner": "Pemilik",
+  "loginSubtitle": "Buat dan kelola formulir saat bepergian",
+  "signInWithGoogle": "Masuk dengan Google",
+  "signInFailed": "Gagal masuk. Silakan coba lagi.",
+  "tabMyForms": "Formulir saya",
+  "tabTemplates": "Galeri Template",
+  "searchForms": "Cari formulir Anda",
+  "searchTemplates": "Templat pencarian",
+  "recentForms": "Formulir terbaru",
+  "noRecentForms": "Tidak ada formulir terbaru",
+  "noFormsMatching": "Tidak ada formulir yang cocok dengan \"{query}\"",
+  "@noFormsMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearch": "Coba istilah pencarian lain",
+  "noTemplatesMatching": "Tidak ada templat yang cocok dengan \"{query}\"",
+  "@noTemplatesMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "tryDifferentSearchOrCategory": "Coba istilah pencarian atau kategori lain",
+  "thisIsTheEnd": "-Inilah akhirnya-",
+  "linkCopiedToClipboard": "Tautan disalin ke papan klip",
+  "deleteFormTitle": "Pindahkan ke Sampah?",
+  "deleteFormContent": "Formulir ini akan dipindahkan ke Sampah.",
+  "formMovedToTrash": "Dipindahkan ke Sampah",
+  "failedToDeleteForm": "Gagal menghapus formulir",
+  "duplicatingForm": "Membuat salinan…",
+  "formDuplicated": "Salinan dibuat",
+  "failedToDuplicateForm": "Gagal membuat salinan",
+  "templateComingSoon": "Templat segera hadir!",
+  "loadingTemplate": "Memuat templat...",
+  "failedToLoadTemplate": "Gagal memuat templat. Silakan coba lagi.",
+  "soon": "Segera",
+  "templateCount": "{count, plural, =1{1 templat} other{{count} templat}}",
+  "@templateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownedByAnyone": "Milik siapa pun",
+  "ownedByMe": "Milik saya",
+  "notOwnedByMe": "Bukan milik saya",
+  "lastModified": "Terakhir diubah",
+  "lastOpened": "Terakhir dibuka saya",
+  "titleAZ": "Nama",
+  "copyLink": "Salin tautan",
+  "categoryAll": "Semua",
+  "categoryWork": "Bekerja",
+  "categoryEducation": "Pendidikan",
+  "categoryCommunity": "Masyarakat",
+  "categoryHealth": "Kesehatan & Kebugaran",
+  "tplPrayerRequestSafety": "Doa Permohonan Keselamatan dan Perlindungan",
+  "tplPrayerRequestSafetyDesc": "Kirimkan permohonan doa untuk keselamatan dan perlindungan",
+  "tplWorkshopEvaluation": "Evaluasi Lokakarya",
+  "tplWorkshopEvaluationDesc": "Evaluasi efektivitas lokakarya",
+  "tplSoccerTryoutEvaluation": "Evaluasi Uji Coba Sepak Bola",
+  "tplSoccerTryoutEvaluationDesc": "Menilai kinerja uji coba sepak bola",
+  "tplOralPresentationEvaluation": "Formulir Evaluasi Presentasi Lisan",
+  "tplOralPresentationEvaluationDesc": "Evaluasi keterampilan presentasi lisan",
+  "tplPeerFeedback": "Formulir Umpan Balik Rekan",
+  "tplPeerFeedbackDesc": "Memberikan umpan balik kepada rekan-rekan",
+  "tplPresentationFeedback": "Umpan Balik Presentasi",
+  "tplPresentationFeedbackDesc": "Berikan umpan balik pada presentasi",
+  "tplPatientFeedback": "Formulir Umpan Balik Pasien",
+  "tplPatientFeedbackDesc": "Kumpulkan umpan balik pasien tentang perawatan",
+  "tplChildcareRegistration": "Formulir Pendaftaran Penitipan Anak",
+  "tplChildcareRegistrationDesc": "Daftarkan anak untuk layanan penitipan anak",
+  "tplMedicationOrder": "Formulir Pemesanan Obat",
+  "tplMedicationOrderDesc": "Kirim pesanan pengobatan",
+  "tplTeamworkCollaborationEvaluation": "Evaluasi Kerja Sama Tim & Kolaborasi",
+  "tplTeamworkCollaborationEvaluationDesc": "Evaluasi keterampilan kolaborasi tim",
+  "tplTrainingDevelopmentFeedback": "Formulir Umpan Balik Pelatihan & Pengembangan",
+  "tplTrainingDevelopmentFeedbackDesc": "Memberikan umpan balik pada program pelatihan",
+  "tplAnnualEmployeePerformanceReview": "Tinjauan Kinerja Karyawan Tahunan",
+  "tplAnnualEmployeePerformanceReviewDesc": "Tinjau kinerja karyawan setiap tahun",
+  "useThisTemplate": "Gunakan templat ini",
+  "failedToCopyTemplate": "Gagal menyalin templat. Silakan coba lagi.",
+  "untitledForm": "Formulir tanpa judul",
+  "sectionTitleOf": "Bagian {n} dari {total}",
+  "@sectionTitleOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionTitle": "Judul bagian",
+  "shortAnswerText": "Teks jawaban singkat",
+  "longAnswerText": "Teks jawaban panjang",
+  "imageTitleOptional": "Judul gambar (opsional)",
+  "videoTitle": "Judul video",
+  "optionLabel": "Opsi {n}",
+  "@optionLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "youTubeVideo": "video YouTube",
+  "dateFormatWithYear": "MM/DD/YYYY",
+  "dateFormatNoYear": "MM/DD",
+  "timeFormatDuration": "HH:MM:SS",
+  "timeFormatStandard": "HH:MM",
+  "googleAccount": "Akun Google",
+  "signOut": "Keluar",
+  "signOutTitle": "Keluar?",
+  "signOutContent": "Apakah Anda yakin ingin keluar dari akun Anda?",
+  "goPremium": "Gunakan Premium",
+  "goPremiumDesc": "Buka kunci semua fitur dan hapus iklan",
+  "about": "Tentang",
+  "privacyPolicy": "Kebijakan Privasi",
+  "termsOfUse": "Ketentuan Penggunaan",
+  "version": "Version 1.0.0",
+  "language": "Bahasa",
+  "languageSystemDefault": "Bawaan sistem",
+  "languageEnglish": "English",
+  "languageJapanese": "日本語",
+  "languageSimplifiedChinese": "简体中文",
+  "languageTraditionalChinese": "繁體中文",
+  "tabEdit": "Sunting",
+  "tabPreview": "Pratinjau",
+  "tabResponses": "Jawaban",
+  "tabSettings": "Pengaturan",
+  "qTypeMultipleChoice": "Pilihan ganda",
+  "qTypeCheckboxes": "kotak centang",
+  "qTypeShortAnswer": "Jawaban singkat",
+  "qTypeParagraph": "Ayat",
+  "qTypeDropdown": "tarik-turun",
+  "qTypeImage": "Gambar",
+  "qTypeVideo": "Video",
+  "qTypeLinearScale": "Skala linier",
+  "qTypeMultipleChoiceGrid": "Kisi pilihan ganda",
+  "qTypeCheckboxGrid": "Kisi kotak centang",
+  "qTypeDate": "Tanggal",
+  "qTypeTime": "Waktu",
+  "qTypeInfo": "Informasi",
+  "qTypeSection": "Bagian",
+  "qTypeTitleDescription": "Judul & deskripsi",
+  "addQuestion": "Tambahkan pertanyaan",
+  "addImage": "Tambahkan gambar",
+  "addVideo": "Tambahkan video",
+  "addInfo": "Tambahkan informasi",
+  "addSection": "Tambahkan bagian",
+  "addYouTubeVideo": "Tambahkan video YouTube",
+  "pasteYouTubeUrl": "Tempel URL YouTube di sini",
+  "clickToUploadImage": "Klik untuk mengunggah gambar",
+  "pasteYouTubeVideoUrl": "Tempel URL video YouTube",
+  "saving": "Penghematan...",
+  "formSaved": "Formulir disimpan! Tautan disalin ke papan klip.",
+  "formSavedWithWarnings": "Formulir disimpan! Tautan disalin. {warnings}",
+  "@formSavedWithWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToSaveForm": "Gagal menyimpan formulir.",
+  "failedToLoadForm": "Gagal memuat formulir.",
+  "saveToPreview": "Simpan ke pratinjau",
+  "saveForm": "Simpan formulir",
+  "saveTheFormFirst": "Simpan formulir terlebih dahulu untuk mendapatkan link",
+  "saveBeforePublishing": "Harap simpan formulir terlebih dahulu sebelum dipublikasikan.",
+  "unsavedChanges": "Perubahan yang belum disimpan",
+  "unsavedChangesBackDesc": "Anda memiliki perubahan yang belum disimpan. Apakah Anda ingin menabung sebelum berangkat?",
+  "unsavedChangesPreviewDesc": "Simpan formulir Anda untuk melihat pratinjau terbaru perubahan Anda.",
+  "dontSave": "Jangan simpan",
+  "untitledQuestion": "Pertanyaan Tanpa Judul",
+  "formTitle": "Judul formulir",
+  "formDescription": "Deskripsi formulir",
+  "addOption": "Tambahkan opsi",
+  "columnN": "Kolom {n}",
+  "@columnN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "rowN": "Baris {n}",
+  "@rowN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "addColumn": "Tambahkan kolom",
+  "addRow": "Tambahkan baris",
+  "minValue": "Nilai minimal",
+  "maxValue": "Nilai maksimal",
+  "labelOptional": "Label (opsional)",
+  "showDescription": "Tampilkan deskripsi",
+  "includeYear": "Sertakan tahun",
+  "duration": "Lamanya",
+  "tooltipDragToReorder": "Tarik untuk menyusun ulang pertanyaan",
+  "tooltipCopyLink": "Salin Tautan",
+  "tooltipPublished": "Diterbitkan",
+  "tooltipPublish": "Menerbitkan",
+  "tooltipSave": "Menyimpan",
+  "tooltipDuplicate": "Buat salinan",
+  "tooltipDelete": "Menghapus",
+  "tooltipMoreOptions": "Opsi lainnya",
+  "tooltipAddImageToQuestion": "Tambahkan gambar ke pertanyaan",
+  "tooltipExportXlsx": "Ekspor sebagai .xlsx",
+  "tooltipExportCsv": "Download jawaban (.csv)",
+  "tooltipOpenLinkedSheet": "Buka Google Sheet yang tertaut",
+  "tooltipLinkToSheet": "Tautan ke Google Spreadsheet",
+  "tooltipRemoveEditor": "Hapus editor",
+  "noPreviewAvailable": "Tidak ada pratinjau yang tersedia",
+  "noPreviewDesc": "Simpan formulir Anda terlebih dahulu untuk melihat pratinjau langsung tampilannya bagi responden.",
+  "saveYourFormFirst": "Simpan formulir Anda terlebih dahulu",
+  "needSaveForResponses": "Anda perlu menyimpan formulir Anda sebelum Anda dapat melihat tanggapan.",
+  "noResponsesYet": "Belum ada tanggapan",
+  "noResponsesDesc": "Tanggapan akan muncul di sini setelah orang mengirimkan formulir Anda.",
+  "shareThisForm": "Bagikan formulir ini",
+  "responseSubSummary": "Ringkasan",
+  "responseSubQuestion": "Pertanyaan",
+  "responseSubIndividual": "Individual",
+  "nResponses": "{count, plural, =1{1 tanggapan} other{{count} tanggapan}}",
+  "@nResponses": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswersYet": "Belum ada jawaban.",
+  "noGridData": "Tidak ada data jaringan.",
+  "andNMore": "... dan {n} lainnya",
+  "@andNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noQuestionsFound": "Tidak ada pertanyaan yang ditemukan.",
+  "questionLabel": "Pertanyaan:",
+  "questionN": "Pertanyaan {n}",
+  "@questionN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noResponses": "Tidak ada tanggapan.",
+  "responseNOfTotal": "{n} dari {total}",
+  "@responseNOfTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "submittedTime": "Dikirim: {time}",
+  "@submittedTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "responseN": "Tanggapan {n}",
+  "@responseN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noAnswer": "Tidak ada jawaban",
+  "couldNotOpenYouTube": "Tidak dapat membuka YouTube.",
+  "exportAs": "Ekspor sebagai {format}",
+  "@exportAs": {
+    "placeholders": {
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "enterFileName": "Masukkan nama file untuk ekspor:",
+  "fileName": "Nama berkas",
+  "exportFailed": "Ekspor gagal: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "responseId": "ID Respons",
+  "createTime": "Ciptakan Waktu",
+  "lastSubmittedTime": "Waktu Terakhir Dikirim",
+  "responsesSheet": "Tanggapan",
+  "exportXlsx": "XLSX",
+  "exportCsv": "CSV",
+  "sheets": "Sheets",
+  "linkedToSheet": "Tertaut ke Lembar",
+  "responsesAutoSaved": "Tanggapan secara otomatis disimpan ke spreadsheet ini:",
+  "linkedSpreadsheet": "Spreadsheet Tertaut",
+  "tapToOpenInBrowser": "Ketuk untuk membuka di browser",
+  "openSheet": "Buka Lembar",
+  "linkToGoogleSheet": "Tautan ke Google Spreadsheet",
+  "linkSheetDesc": "Tanggapan formulir akan disimpan secara otomatis ke spreadsheet ini. Tab lembar baru akan dibuat dengan semua tanggapan.",
+  "createAndLink": "Buat & Tautkan",
+  "spreadsheetName": "Nama lembar bentang",
+  "unlinkSheetTitle": "Batalkan tautan Lembar?",
+  "unlinkSheetDesc": "Tanggapan formulir baru tidak akan disimpan lagi ke spreadsheet ini. Respons yang ada di sheet tidak akan dihapus.",
+  "sheetUnlinked": "Tautan sheet berhasil dibatalkan.",
+  "failedToCreateSheet": "Gagal membuat spreadsheet. Silakan coba lagi.",
+  "formLinkedToSheet": "Formulir berhasil ditautkan ke \"{name}\"!",
+  "@formLinkedToSheet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLink": "Gagal menautkan: {error}",
+  "@failedToLink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToUnlink": "Gagal membatalkan tautan: {error}",
+  "@failedToUnlink": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorWithMessage": "Kesalahan: {message}",
+  "@errorWithMessage": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "publishRequired": "Publikasikan Diperlukan",
+  "publishRequiredDesc": "Anda perlu memublikasikan formulir ini agar dapat menerima tanggapan. Apakah Anda ingin mempublikasikannya sekarang?",
+  "formPublished": "Formulir diterbitkan dan sekarang menerima tanggapan!",
+  "failedToPublish": "Gagal mempublikasikan: {error}",
+  "@failedToPublish": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formUnpublished": "Formulir tidak dipublikasikan",
+  "formIsPublished": "Formulir diterbitkan",
+  "copyFormLink": "Salin tautan formulir",
+  "unpublishForm": "Batalkan publikasi formulir",
+  "unpublishFormDesc": "Formulir akan berhenti menerima tanggapan",
+  "settingsResponses": "Jawaban",
+  "settingsPresentation": "Presentasi",
+  "settingsEditors": "Editor",
+  "acceptResponses": "Menerima jawaban",
+  "acceptResponsesEnabled": "Orang dapat mengirimkan tanggapan ke formulir ini",
+  "acceptResponsesDisabled": "Formulir ini tidak menerima tanggapan",
+  "collectEmail": "Kumpulkan alamat email",
+  "collectEmailDesc": "Pilih cara mengumpulkan email responden",
+  "dontCollect": "Jangan kumpulkan",
+  "verified": "Telah Diverifikasi",
+  "responderInput": "Masukan responden",
+  "limitToOneResponse": "Batasi hingga 1 respons",
+  "limitToOneResponseDesc": "Mengharuskan responden untuk masuk",
+  "editAfterSubmit": "Edit setelah dikirim",
+  "editAfterSubmitDesc": "Izinkan responden untuk mengedit tanggapan mereka setelah pengiriman",
+  "showProgressBar": "Tampilkan status progres",
+  "showProgressBarDesc": "Menampilkan bilah kemajuan di bagian bawah formulir",
+  "shuffleQuestionOrder": "Acak urutan pertanyaan",
+  "shuffleQuestionOrderDesc": "Pertanyaan akan muncul dalam urutan berbeda untuk setiap responden",
+  "confirmationMessage": "Konfirmasi pesan",
+  "confirmationMessageDesc": "Pesan ditampilkan setelah pengiriman formulir",
+  "enterConfirmationMessage": "Masukkan pesan konfirmasi",
+  "defaultConfirmationMessage": "Tanggapan Anda telah dicatat.",
+  "addEditor": "Tambahkan editor",
+  "gmailAddress": "Alamat Gmail",
+  "gmailHint": "name@gmail.com",
+  "enterGmail": "Silakan masukkan alamat Gmail.",
+  "enterValidEmail": "Silakan masukkan alamat email yang valid.",
+  "removeEditorTitle": "Hapus editor?",
+  "removeEditorDesc": "Hapus {name} dari formulir ini? Mereka tidak dapat lagi mengeditnya.",
+  "@removeEditorDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyOwner": "Anda sudah menjadi pemilik formulir ini.",
+  "alreadyOwnerOther": "Pengguna ini sudah menjadi pemilik formulir ini.",
+  "alreadyEditor": "Pengguna ini sudah menjadi editor formulir ini.",
+  "failedToAddEditor": "Gagal menambahkan editor.",
+  "addedEditor": "Menambahkan {email} sebagai editor.",
+  "@addedEditor": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotRemoveOwner": "Pemiliknya tidak dapat dihapus.",
+  "failedToRemoveEditor": "Gagal menghapus editor.",
+  "removedEditor": "Menghapus {name}.",
+  "@removedEditor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noOwnerFound": "Tidak ada kolaborator yang ditemukan untuk formulir ini.",
+  "noEditorsYet": "Belum ada editor. Ketuk +Tambahkan untuk mengundang seseorang melalui Gmail.",
+  "noEditorsOnForm": "Tidak ada editor pada formulir ini.",
+  "failedToLoadEditors": "Gagal memuat editor.",
+  "saveChangesTitle": "Simpan perubahan?",
+  "breakingChangesDesc": "Perubahan ini akan mempengaruhi respons yang ada: {desc}.\n\nApakah Anda ingin melanjutkan?",
+  "@breakingChangesDesc": {
+    "placeholders": {
+      "desc": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicateChoicesError": "Anda tidak dapat memiliki pilihan duplikat dalam pertanyaan pilihan ganda.",
+  "invalidDataError": "Data tidak valid. Silakan periksa formulir Anda dan coba lagi.",
+  "permissionDeniedError": "Izin ditolak. Silakan periksa akses akun Google Anda.",
+  "addAtLeastOneQuestion": "Harap tambahkan setidaknya satu pertanyaan sebelum menyimpan.",
+  "failedToUpdateForm": "Gagal memperbarui formulir.",
+  "failedToLoadCurrentForm": "Gagal memuat data formulir saat ini. Silakan coba lagi.",
+  "couldNotLoadSettings": "Tidak dapat memuat pengaturan formulir: {error}",
+  "@couldNotLoadSettings": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "linkCopiedToClipboardExclaim": "Tautan disalin ke papan klip!",
+  "userFallback": "Pengguna",
+  "languagePortugueseBrazil": "Português (Brasil)",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageRussian": "Русский",
+  "languageGerman": "Deutsch",
+  "languageFrench": "Français",
+  "formNoLongerExists": "Formulir ini tidak ada lagi atau telah dihapus.",
+  "failedToPickImage": "Tidak dapat memilih gambar. Silakan coba lagi.",
+  "failedToShareFile": "Tidak dapat membagikan file.",
+  "noInternetConnection": "Tidak ada koneksi internet",
+  "noInternetConnectionDesc": "Silakan periksa pengaturan jaringan Anda dan coba lagi.",
+  "noInternetSaveError": "Tidak ada koneksi internet. Tidak dapat menyimpan formulir.",
+  "noInternetLoadError": "Tidak ada koneksi internet. Tidak dapat memuat formulir.",
+  "retry": "Coba lagi"
+}

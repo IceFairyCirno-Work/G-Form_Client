@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:googleform_client/l10n/app_localizations.dart';
 import '../services/google_auth_service.dart';
@@ -18,6 +19,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final GoogleAuthService _authService = GoogleAuthService();
   final LocaleService _localeService = LocaleService.instance;
   bool _isSigningOut = false;
+  String _appVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = info.version;
+      });
+    }
+  }
 
   Future<void> _confirmSignOut() async {
     final l10n = AppLocalizations.of(context);
@@ -144,6 +161,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (mounted) setState(() {});
                 },
               ),
+              RadioListTile<Locale?>(
+                title: Text(l10n.languagePortugueseBrazil),
+                value: const Locale('pt'),
+                groupValue: current,
+                activeColor: const Color(0xFF673AB7),
+                onChanged: (value) async {
+                  await _localeService.setLocale(value);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) setState(() {});
+                },
+              ),
+              RadioListTile<Locale?>(
+                title: Text(l10n.languageIndonesian),
+                value: const Locale('id'),
+                groupValue: current,
+                activeColor: const Color(0xFF673AB7),
+                onChanged: (value) async {
+                  await _localeService.setLocale(value);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) setState(() {});
+                },
+              ),
+              RadioListTile<Locale?>(
+                title: Text(l10n.languageRussian),
+                value: const Locale('ru'),
+                groupValue: current,
+                activeColor: const Color(0xFF673AB7),
+                onChanged: (value) async {
+                  await _localeService.setLocale(value);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) setState(() {});
+                },
+              ),
+              RadioListTile<Locale?>(
+                title: Text(l10n.languageGerman),
+                value: const Locale('de'),
+                groupValue: current,
+                activeColor: const Color(0xFF673AB7),
+                onChanged: (value) async {
+                  await _localeService.setLocale(value);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) setState(() {});
+                },
+              ),
+              RadioListTile<Locale?>(
+                title: Text(l10n.languageFrench),
+                value: const Locale('fr'),
+                groupValue: current,
+                activeColor: const Color(0xFF673AB7),
+                onChanged: (value) async {
+                  await _localeService.setLocale(value);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) setState(() {});
+                },
+              ),
               const SizedBox(height: 8),
               ],
             ),
@@ -160,6 +232,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       japaneseLabel: l10n.languageJapanese,
       simplifiedChineseLabel: l10n.languageSimplifiedChinese,
       traditionalChineseLabel: l10n.languageTraditionalChinese,
+      portugueseBrazilLabel: l10n.languagePortugueseBrazil,
+      indonesianLabel: l10n.languageIndonesian,
+      russianLabel: l10n.languageRussian,
+      germanLabel: l10n.languageGerman,
+      frenchLabel: l10n.languageFrench,
     );
   }
 
@@ -450,7 +527,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             Center(
               child: Text(
-                l10n.version,
+                _appVersion.isNotEmpty
+                    ? l10n.version.replaceAll(RegExp(r'[\d.]+\+?\d*$'), _appVersion)
+                    : l10n.version,
                 style: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 12,

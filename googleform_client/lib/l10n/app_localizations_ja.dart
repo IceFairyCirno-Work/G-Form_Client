@@ -60,13 +60,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get unlink => 'リンク解除';
 
   @override
-  String get duplicate => '複製';
+  String get duplicate => 'コピーを作成';
 
   @override
   String get rename => '名前を変更';
 
   @override
-  String get renameForm => 'フォームの名前を変更';
+  String get renameForm => '名前を変更';
 
   @override
   String get enterNewName => '新しい名前を入力';
@@ -75,10 +75,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get documentName => 'ドキュメント名';
 
   @override
-  String get formRenamed => 'フォームの名前を変更しました';
+  String get formRenamed => '名前を変更しました';
 
   @override
-  String get failedToRename => 'フォームの名前を変更できませんでした';
+  String get failedToRename => '名前を変更できませんでした';
 
   @override
   String get required => '必須';
@@ -132,10 +132,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get searchTemplates => 'テンプレートを検索';
 
   @override
-  String get recentForms => '最近のフォーム';
+  String get recentForms => '最近使用したフォーム';
 
   @override
-  String get noRecentForms => '最近のフォームはありません';
+  String get noRecentForms => '最近のアイテムはありません';
 
   @override
   String noFormsMatching(String query) {
@@ -160,25 +160,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get linkCopiedToClipboard => 'リンクをクリップボードにコピーしました';
 
   @override
-  String get deleteFormTitle => 'フォームを削除しますか？';
+  String get deleteFormTitle => 'ゴミ箱に移動しますか？';
 
   @override
-  String get deleteFormContent => 'このフォームはゴミ箱に移動されます。';
+  String get deleteFormContent => 'ゴミ箱に移動されます。';
 
   @override
-  String get formMovedToTrash => 'フォームをゴミ箱に移動しました';
+  String get formMovedToTrash => 'ゴミ箱に移動しました';
 
   @override
   String get failedToDeleteForm => 'フォームを削除できませんでした';
 
   @override
-  String get duplicatingForm => 'フォームを複製しています…';
+  String get duplicatingForm => 'コピーを作成しています…';
 
   @override
-  String get formDuplicated => 'フォームを複製しました！';
+  String get formDuplicated => 'コピーを作成しました';
 
   @override
-  String get failedToDuplicateForm => 'フォームを複製できませんでした';
+  String get failedToDuplicateForm => 'コピーを作成できませんでした';
 
   @override
   String get templateComingSoon => 'テンプレートは近日公開！';
@@ -204,22 +204,22 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get ownedByAnyone => 'すべてのユーザー';
+  String get ownedByAnyone => 'オーナー指定なし';
 
   @override
-  String get ownedByMe => '自分が所有';
+  String get ownedByMe => '自分がオーナー';
 
   @override
-  String get notOwnedByMe => '自分以外が所有';
+  String get notOwnedByMe => '自分以外がオーナー';
 
   @override
-  String get lastModified => '最終更新日';
+  String get lastModified => '最終更新';
 
   @override
-  String get lastOpened => '最終閲覧日';
+  String get lastOpened => '最終閲覧(自分)';
 
   @override
-  String get titleAZ => 'タイトル (A–Z)';
+  String get titleAZ => 'タイトル';
 
   @override
   String get copyLink => 'リンクをコピー';
@@ -433,7 +433,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get qTypeParagraph => '段落';
 
   @override
-  String get qTypeDropdown => 'ブルダウン';
+  String get qTypeDropdown => 'プルダウン';
 
   @override
   String get qTypeImage => '画像';
@@ -595,7 +595,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tooltipSave => '保存';
 
   @override
-  String get tooltipDuplicate => '複製';
+  String get tooltipDuplicate => 'コピーを作成';
 
   @override
   String get tooltipDelete => '削除';
@@ -827,7 +827,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get formIsPublished => 'フォームは公開中です';
 
   @override
-  String get copyFormLink => 'フォームリンクをコピー';
+  String get copyFormLink => '回答者へのリンクをコピー';
 
   @override
   String get unpublishForm => 'フォームの公開を停止';
@@ -839,7 +839,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsResponses => '回答';
 
   @override
-  String get settingsPresentation => 'プレゼンテーション';
+  String get settingsPresentation => '表示設定';
 
   @override
   String get settingsEditors => '編集者';
@@ -1003,4 +1003,43 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get userFallback => 'ユーザー';
+
+  @override
+  String get languagePortugueseBrazil => 'Português (Brasil)';
+
+  @override
+  String get languageIndonesian => 'Bahasa Indonesia';
+
+  @override
+  String get languageRussian => 'Русский';
+
+  @override
+  String get languageGerman => 'Deutsch';
+
+  @override
+  String get languageFrench => 'Français';
+
+  @override
+  String get noInternetConnection => 'インターネットに接続されていません';
+
+  @override
+  String get noInternetConnectionDesc => 'ネットワーク設定を確認して、もう一度お試しください。';
+
+  @override
+  String get noInternetSaveError => 'インターネットに接続されていません。フォームを保存できません。';
+
+  @override
+  String get noInternetLoadError => 'インターネットに接続されていません。フォームを読み込めません。';
+
+  @override
+  String get retry => '再試行';
+
+  @override
+  String get formNoLongerExists => 'このフォームは存在しないか、削除されました。';
+
+  @override
+  String get failedToPickImage => '画像を選択できませんでした。もう一度お試しください。';
+
+  @override
+  String get failedToShareFile => 'ファイルを共有できませんでした。';
 }

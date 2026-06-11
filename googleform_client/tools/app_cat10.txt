@@ -1,0 +1,14 @@
+﻿recentForms | Recent forms
+lastModified | Last modified
+lastOpened | Last opened
+ownedByMe | Owned by me
+notOwnedByMe | Not owned by me
+ownedByAnyone | Owned by anyone
+titleAZ | Title (A–Z)
+deleteFormContent | This form will be moved to trash.
+formMovedToTrash | Form moved to trash
+duplicate | Duplicate
+formDuplicated | Form duplicated!
+rename | Rename
+renameForm | Rename form
+tabTemplates | Templates

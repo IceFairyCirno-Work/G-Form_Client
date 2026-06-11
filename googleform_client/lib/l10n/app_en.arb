@@ -1,6 +1,5 @@
 {
   "@@locale": "en",
-
   "appName": "Form",
   "cancel": "Cancel",
   "save": "Save",
@@ -35,11 +34,9 @@
   "image": "Image",
   "video": "Video",
   "owner": "Owner",
-
   "loginSubtitle": "Create and manage forms on the go",
   "signInWithGoogle": "Sign in with Google",
   "signInFailed": "Sign in failed. Please try again.",
-
   "tabMyForms": "My forms",
   "tabTemplates": "Templates",
   "searchForms": "Search your forms",
@@ -49,14 +46,18 @@
   "noFormsMatching": "No forms matching \"{query}\"",
   "@noFormsMatching": {
     "placeholders": {
-      "query": {"type": "String"}
+      "query": {
+        "type": "String"
+      }
     }
   },
   "tryDifferentSearch": "Try a different search term",
   "noTemplatesMatching": "No templates matching \"{query}\"",
   "@noTemplatesMatching": {
     "placeholders": {
-      "query": {"type": "String"}
+      "query": {
+        "type": "String"
+      }
     }
   },
   "tryDifferentSearchOrCategory": "Try a different search term or category",
@@ -76,7 +77,9 @@
   "templateCount": "{count, plural, =1{1 template} other{{count} templates}}",
   "@templateCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "ownedByAnyone": "Owned by anyone",
@@ -86,49 +89,47 @@
   "lastOpened": "Last opened",
   "titleAZ": "Title (A–Z)",
   "copyLink": "Copy link",
-
   "categoryAll": "All",
   "categoryWork": "Work",
   "categoryEducation": "Education",
   "categoryCommunity": "Community",
   "categoryHealth": "Health & Wellness",
-
   "tplPrayerRequestSafety": "Prayer Request for Safety and Protection",
   "tplPrayerRequestSafetyDesc": "Submit prayer requests for safety and protection",
   "tplWorkshopEvaluation": "Workshop Evaluation",
   "tplWorkshopEvaluationDesc": "Evaluate workshop effectiveness",
   "tplSoccerTryoutEvaluation": "Soccer Tryout Evaluation",
   "tplSoccerTryoutEvaluationDesc": "Assess soccer tryout performance",
-
   "tplOralPresentationEvaluation": "Oral Presentation Evaluation Form",
   "tplOralPresentationEvaluationDesc": "Evaluate oral presentation skills",
   "tplPeerFeedback": "Peer Feedback Form",
   "tplPeerFeedbackDesc": "Provide feedback to peers",
   "tplPresentationFeedback": "Presentation Feedback",
   "tplPresentationFeedbackDesc": "Give feedback on presentations",
-
   "tplPatientFeedback": "Patient Feedback Form",
   "tplPatientFeedbackDesc": "Collect patient feedback on care",
   "tplChildcareRegistration": "Childcare Registration Form",
   "tplChildcareRegistrationDesc": "Register children for childcare services",
   "tplMedicationOrder": "Medication Order Form",
   "tplMedicationOrderDesc": "Submit medication orders",
-
   "tplTeamworkCollaborationEvaluation": "Teamwork & Collaboration Evaluation",
   "tplTeamworkCollaborationEvaluationDesc": "Evaluate team collaboration skills",
   "tplTrainingDevelopmentFeedback": "Training & Development Feedback Form",
   "tplTrainingDevelopmentFeedbackDesc": "Provide feedback on training programs",
   "tplAnnualEmployeePerformanceReview": "Annual Employee Performance Review",
   "tplAnnualEmployeePerformanceReviewDesc": "Review employee performance annually",
-
   "useThisTemplate": "Use this template",
   "failedToCopyTemplate": "Failed to copy template. Please try again.",
   "untitledForm": "Untitled form",
   "sectionTitleOf": "Section {n} of {total}",
   "@sectionTitleOf": {
     "placeholders": {
-      "n": {"type": "int"},
-      "total": {"type": "int"}
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "sectionTitle": "Section title",
@@ -139,7 +140,9 @@
   "optionLabel": "Option {n}",
   "@optionLabel": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "youTubeVideo": "YouTube video",
@@ -147,7 +150,6 @@
   "dateFormatNoYear": "MM/DD",
   "timeFormatDuration": "HH:MM:SS",
   "timeFormatStandard": "HH:MM",
-
   "googleAccount": "Google Account",
   "signOut": "Sign out",
   "signOutTitle": "Sign out?",
@@ -164,12 +166,10 @@
   "languageJapanese": "日本語",
   "languageSimplifiedChinese": "简体中文",
   "languageTraditionalChinese": "繁體中文",
-
   "tabEdit": "Edit",
   "tabPreview": "Preview",
   "tabResponses": "Responses",
   "tabSettings": "Settings",
-
   "qTypeMultipleChoice": "Multiple choice",
   "qTypeCheckboxes": "Checkboxes",
   "qTypeShortAnswer": "Short answer",
@@ -185,7 +185,6 @@
   "qTypeInfo": "Info",
   "qTypeSection": "Section",
   "qTypeTitleDescription": "Title & description",
-
   "addQuestion": "Add question",
   "addImage": "Add image",
   "addVideo": "Add video",
@@ -195,13 +194,14 @@
   "pasteYouTubeUrl": "Paste YouTube URL here",
   "clickToUploadImage": "Click to upload image",
   "pasteYouTubeVideoUrl": "Paste YouTube video URL",
-
   "saving": "Saving...",
   "formSaved": "Form saved! Link copied to clipboard.",
   "formSavedWithWarnings": "Form saved! Link copied. {warnings}",
   "@formSavedWithWarnings": {
     "placeholders": {
-      "warnings": {"type": "String"}
+      "warnings": {
+        "type": "String"
+      }
     }
   },
   "failedToSaveForm": "Failed to save form.",
@@ -210,12 +210,10 @@
   "saveForm": "Save form",
   "saveTheFormFirst": "Save the form first to get a link",
   "saveBeforePublishing": "Please save the form first before publishing.",
-
   "unsavedChanges": "Unsaved changes",
   "unsavedChangesBackDesc": "You have unsaved changes. Do you want to save before leaving?",
   "unsavedChangesPreviewDesc": "Save your form to see the latest preview of your changes.",
   "dontSave": "Don't save",
-
   "untitledQuestion": "Untitled Question",
   "formTitle": "Form title",
   "formDescription": "Form description",
@@ -223,13 +221,17 @@
   "columnN": "Column {n}",
   "@columnN": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "rowN": "Row {n}",
   "@rowN": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "addColumn": "Add column",
@@ -240,7 +242,6 @@
   "showDescription": "Show description",
   "includeYear": "Include year",
   "duration": "Duration",
-
   "tooltipDragToReorder": "Drag to reorder question",
   "tooltipCopyLink": "Copy Link",
   "tooltipPublished": "Published",
@@ -255,10 +256,8 @@
   "tooltipOpenLinkedSheet": "Open linked Google Sheet",
   "tooltipLinkToSheet": "Link to Google Sheet",
   "tooltipRemoveEditor": "Remove editor",
-
   "noPreviewAvailable": "No preview available",
   "noPreviewDesc": "Save your form first to see a live preview of how it looks to respondents.",
-
   "saveYourFormFirst": "Save your form first",
   "needSaveForResponses": "You need to save your form before you can view responses.",
   "noResponsesYet": "No responses yet",
@@ -270,7 +269,9 @@
   "nResponses": "{count, plural, =1{1 response} other{{count} responses}}",
   "@nResponses": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "noAnswersYet": "No answers yet.",
@@ -278,7 +279,9 @@
   "andNMore": "... and {n} more",
   "@andNMore": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "noQuestionsFound": "No questions found.",
@@ -286,36 +289,47 @@
   "questionN": "Question {n}",
   "@questionN": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "noResponses": "No responses.",
   "responseNOfTotal": "{n} of {total}",
   "@responseNOfTotal": {
     "placeholders": {
-      "n": {"type": "int"},
-      "total": {"type": "int"}
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "submittedTime": "Submitted: {time}",
   "@submittedTime": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "responseN": "Response {n}",
   "@responseN": {
     "placeholders": {
-      "n": {"type": "int"}
+      "n": {
+        "type": "int"
+      }
     }
   },
   "noAnswer": "No answer",
   "couldNotOpenYouTube": "Could not open YouTube.",
-
   "exportAs": "Export as {format}",
   "@exportAs": {
     "placeholders": {
-      "format": {"type": "String"}
+      "format": {
+        "type": "String"
+      }
     }
   },
   "enterFileName": "Enter a file name for the export:",
@@ -323,7 +337,9 @@
   "exportFailed": "Export failed: {error}",
   "@exportFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "responseId": "Response ID",
@@ -333,7 +349,6 @@
   "exportXlsx": "XLSX",
   "exportCsv": "CSV",
   "sheets": "Sheets",
-
   "linkedToSheet": "Linked to Sheet",
   "responsesAutoSaved": "Responses are automatically saved to this spreadsheet:",
   "linkedSpreadsheet": "Linked Spreadsheet",
@@ -350,35 +365,44 @@
   "formLinkedToSheet": "Form linked to \"{name}\" successfully!",
   "@formLinkedToSheet": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "failedToLink": "Failed to link: {error}",
   "@failedToLink": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "failedToUnlink": "Failed to unlink: {error}",
   "@failedToUnlink": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "errorWithMessage": "Error: {message}",
   "@errorWithMessage": {
     "placeholders": {
-      "message": {"type": "String"}
+      "message": {
+        "type": "String"
+      }
     }
   },
-
   "publishRequired": "Publish Required",
   "publishRequiredDesc": "You need to publish this form before it can accept responses. Would you like to publish it now?",
   "formPublished": "Form published and now accepting responses!",
   "failedToPublish": "Failed to publish: {error}",
   "@failedToPublish": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "formUnpublished": "Form unpublished",
@@ -386,7 +410,6 @@
   "copyFormLink": "Copy form link",
   "unpublishForm": "Unpublish form",
   "unpublishFormDesc": "Form will stop accepting responses",
-
   "settingsResponses": "Responses",
   "settingsPresentation": "Presentation",
   "settingsEditors": "Editors",
@@ -410,7 +433,6 @@
   "confirmationMessageDesc": "Message shown after form submission",
   "enterConfirmationMessage": "Enter confirmation message",
   "defaultConfirmationMessage": "Your response has been recorded.",
-
   "addEditor": "Add editor",
   "gmailAddress": "Gmail address",
   "gmailHint": "name@gmail.com",
@@ -420,7 +442,9 @@
   "removeEditorDesc": "Remove {name} from this form? They will no longer be able to edit it.",
   "@removeEditorDesc": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "alreadyOwner": "You are already the owner of this form.",
@@ -430,7 +454,9 @@
   "addedEditor": "Added {email} as an editor.",
   "@addedEditor": {
     "placeholders": {
-      "email": {"type": "String"}
+      "email": {
+        "type": "String"
+      }
     }
   },
   "cannotRemoveOwner": "The owner cannot be removed.",
@@ -438,22 +464,24 @@
   "removedEditor": "Removed {name}.",
   "@removedEditor": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "noOwnerFound": "No collaborators found for this form.",
   "noEditorsYet": "No editors yet. Tap +Add to invite someone by Gmail.",
   "noEditorsOnForm": "No editors on this form.",
   "failedToLoadEditors": "Failed to load editors.",
-
   "saveChangesTitle": "Save changes?",
   "breakingChangesDesc": "This change will affect existing responses: {desc}.\n\nDo you want to continue?",
   "@breakingChangesDesc": {
     "placeholders": {
-      "desc": {"type": "String"}
+      "desc": {
+        "type": "String"
+      }
     }
   },
-
   "duplicateChoicesError": "You can't have duplicated choices in a multiple choice question.",
   "invalidDataError": "Invalid data. Please check your form and try again.",
   "permissionDeniedError": "Permission denied. Please check your Google account access.",
@@ -463,10 +491,24 @@
   "couldNotLoadSettings": "Could not load form settings: {error}",
   "@couldNotLoadSettings": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "linkCopiedToClipboardExclaim": "Link copied to clipboard!",
-
-  "userFallback": "User"
+  "userFallback": "User",
+  "languagePortugueseBrazil": "Português (Brasil)",
+  "languageIndonesian": "Bahasa Indonesia",
+  "languageRussian": "Русский",
+  "languageGerman": "Deutsch",
+  "languageFrench": "Français",
+  "noInternetConnection": "No internet connection",
+  "noInternetConnectionDesc": "Please check your network settings and try again.",
+  "noInternetSaveError": "No internet connection. Cannot save form.",
+  "noInternetLoadError": "No internet connection. Cannot load form.",
+  "retry": "Retry",
+  "formNoLongerExists": "This form no longer exists or was deleted.",
+  "failedToPickImage": "Could not pick image. Please try again.",
+  "failedToShareFile": "Could not share file."
 }

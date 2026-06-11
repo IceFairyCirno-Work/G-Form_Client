@@ -44,7 +44,7 @@ class _ImageMemoryCache {
 
 /// Fetches image bytes via [HttpClient], catching all network errors.
 /// Returns null on any failure (non-200, empty body, invalid URL, etc.).
-Future<Uint8List?> fetchNetworkImageBytes(
+Future<Uint8List?> _fetchNetworkImageBytes(
   String url, {
   Map<String, String>? headers,
 }) async {
@@ -76,7 +76,7 @@ Future<Uint8List?> fetchNetworkImageBytes(
     return bytes;
   } catch (e) {
     if (kDebugMode) {
-      debugPrint('fetchNetworkImageBytes error for $url: $e');
+      debugPrint('_fetchNetworkImageBytes error for $url: $e');
     }
     return null;
   } finally {
@@ -147,7 +147,7 @@ class _SafeImageLoaderState extends State<SafeImageLoader> {
       _bytes = null;
     });
 
-    final bytes = await fetchNetworkImageBytes(
+    final bytes = await _fetchNetworkImageBytes(
       widget.url,
       headers: widget.headers,
     );
@@ -243,7 +243,7 @@ class _SafeAvatarImageState extends State<SafeAvatarImage> {
       return;
     }
 
-    final bytes = await fetchNetworkImageBytes(
+    final bytes = await _fetchNetworkImageBytes(
       widget.url,
       headers: widget.headers,
     );
