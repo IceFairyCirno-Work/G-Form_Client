@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:googleform_client/l10n/app_localizations.dart';
 import 'services/google_auth_service.dart';
@@ -11,6 +12,8 @@ import 'utils/app_icons.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: '.env');
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);

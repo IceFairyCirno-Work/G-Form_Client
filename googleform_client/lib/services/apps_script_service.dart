@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'google_auth_service.dart';
 
@@ -11,9 +12,10 @@ class AppsScriptService {
   AppsScriptService._internal();
 
   final GoogleAuthService _authService = GoogleAuthService();
-  final String _scriptId =
-      'AKfycbxaCQ3_fTx0SVuKjlAaoqVQCdPwmFt-fTzWYM63A9yGNc3EeN6o5zMxlVdqd11kPs6C';
-  final String _scriptBaseUrl = 'https://script.googleapis.com/v1/scripts';
+  String get _scriptId =>
+      dotenv.env['GOOGLE_APPS_SCRIPT_ID'] ?? '';
+  String get _scriptBaseUrl =>
+      dotenv.env['GOOGLE_SCRIPT_API_URL'] ?? 'https://script.googleapis.com/v1/scripts';
 
   /// Whether the service is configured (scriptId is set).
   bool get isConfigured => _scriptId.isNotEmpty;

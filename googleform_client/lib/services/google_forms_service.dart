@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'google_auth_service.dart';
 import '../models/form_model.dart';
@@ -107,8 +108,10 @@ class GoogleFormsService {
   factory GoogleFormsService() => _instance;
   GoogleFormsService._internal();
 
-  final String _formsBaseUrl = 'https://forms.googleapis.com/v1/forms';
-  final String _driveBaseUrl = 'https://www.googleapis.com/drive/v3/files';
+  final String _formsBaseUrl =
+      dotenv.env['GOOGLE_FORMS_API_URL'] ?? 'https://forms.googleapis.com/v1/forms';
+  final String _driveBaseUrl =
+      dotenv.env['GOOGLE_DRIVE_API_URL'] ?? 'https://www.googleapis.com/drive/v3/files';
   final GoogleAuthService _authService = GoogleAuthService();
 
   Map<String, String> _headers(String token) => {
@@ -532,7 +535,9 @@ class GoogleFormsService {
       ];
 
       final response = await http.post(
-        Uri.parse('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'),
+        Uri.parse(
+          '${dotenv.env['GOOGLE_DRIVE_UPLOAD_URL'] ?? 'https://www.googleapis.com/upload/drive/v3/files'}?uploadType=multipart',
+        ),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'multipart/related; boundary=$boundary',
@@ -1147,7 +1152,8 @@ class GoogleFormsService {
     }
   }
 
-  final String _sheetsBaseUrl = 'https://sheets.googleapis.com/v4/spreadsheets';
+  final String _sheetsBaseUrl =
+      dotenv.env['GOOGLE_SHEETS_API_URL'] ?? 'https://sheets.googleapis.com/v4/spreadsheets';
 
   /// Create an empty Google Spreadsheet (no pre-filled data).
   /// Used for linking as a form response destination — Google will auto-populate

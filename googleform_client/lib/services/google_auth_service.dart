@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class GoogleAuthService {
@@ -7,17 +8,17 @@ class GoogleAuthService {
   GoogleAuthService._internal();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '213076487226-s24okciln4cab0rt1vipft0q3ju33lm5.apps.googleusercontent.com',
+    serverClientId: dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
     scopes: [
-      'https://www.googleapis.com/auth/forms.body',
-      'https://www.googleapis.com/auth/forms.body.readonly',
-      'https://www.googleapis.com/auth/forms',
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/script.projects',
-      'https://www.googleapis.com/auth/spreadsheets',
-    ],
+      dotenv.env['GOOGLE_SCOPE_FORMS_BODY'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_FORMS_BODY_READONLY'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_FORMS'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_DRIVE'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_DRIVE_FILE'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_DRIVE_READONLY'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_SCRIPT_PROJECTS'] ?? '',
+      dotenv.env['GOOGLE_SCOPE_SPREADSHEETS'] ?? '',
+    ].where((s) => s.isNotEmpty).toList(),
   );
 
   GoogleSignInAccount? _currentUser;
