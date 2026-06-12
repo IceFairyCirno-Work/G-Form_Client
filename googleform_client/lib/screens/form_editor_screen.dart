@@ -5821,7 +5821,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
     // MC / Dropdown → Pie Chart
     if (q.type == QuestionType.multipleChoice ||
         q.type == QuestionType.dropdown) {
-      final allOptions = q.options.where((o) => o.isNotEmpty).toList();
+      final allOptions = <String>[];
+      for (final o in q.options) {
+        if (o.isNotEmpty && !allOptions.contains(o)) allOptions.add(o);
+      }
       for (final key in answerCounts.keys) {
         if (!allOptions.contains(key)) allOptions.add(key);
       }
@@ -5831,7 +5834,10 @@ class _FormEditorScreenState extends State<FormEditorScreen>
 
     // Checkbox → Horizontal Bar Chart
     if (q.type == QuestionType.checkbox) {
-      final allOptions = q.options.where((o) => o.isNotEmpty).toList();
+      final allOptions = <String>[];
+      for (final o in q.options) {
+        if (o.isNotEmpty && !allOptions.contains(o)) allOptions.add(o);
+      }
       for (final key in answerCounts.keys) {
         if (!allOptions.contains(key)) allOptions.add(key);
       }

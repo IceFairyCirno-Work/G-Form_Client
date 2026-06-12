@@ -671,7 +671,10 @@ class QuestionItem {
           optionsList.removeWhere((o) => o['isOther'] == true);
         }
       }
-      options = optionsList.map((o) => (o['value'] as String?) ?? '').toList();
+      options = optionsList
+          .map((o) => ((o['value'] as String?) ?? '').trim())
+          .where((o) => o.isNotEmpty)
+          .toList();
     } else if (question?.containsKey('textQuestion') ?? false) {
       final textQ = _asStringKeyMap(question!['textQuestion']);
       if (textQ == null) {
