@@ -158,12 +158,4 @@ flutter build ios        # iOS release build
 - [`excel`](https://pub.dev/packages/excel) — XLSX export
 - [`webview_flutter`](https://pub.dev/packages/webview_flutter) — In-app form preview
 - [`connectivity_plus`](https://pub.dev/packages/connectivity_plus) — Network status
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-change`)
-3. Commit your changes
-4. Open a pull request
-
 Please do **not** commit `.env`, `GoogleService-Info.plist`, or other credential files.
