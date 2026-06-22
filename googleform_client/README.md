@@ -1,17 +1,13 @@
 # googleform_client
 
-A new Flutter project.
+The Flutter application package for [G-Form](../README.md).
 
-## Getting Started
+All setup instructions, feature documentation, and development commands are in the **[repository README](../README.md)**.
 
-This project is a starting point for a Flutter application.
+## Quick start
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+cp .env.example .env   # then edit with your Google OAuth credentials
+flutter pub get
+flutter run
+```
